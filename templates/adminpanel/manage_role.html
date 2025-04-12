@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Role List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4CAF50;
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(1.5rem);
+        }
+        .toggle-label::after {
+            content: '';
+            display: block;
+            width: 1rem;
+            height: 1rem;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            transform: translateX(0.25rem);
+        }
+        .status-active {
+            color: #10B981;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #EF4444;
+            font-weight: bold;
+        }
+        .btn-small {
+            padding: 0.25rem 0.5rem; /* Adjust padding as needed */
+            font-size: 0.75rem; /* Reduce font size */
+        }
+    </style>
+    <script>
+        let eventSource = null;
+
+        function connectToEvents() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/events');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'status_change') {
+                    // Refresh the roles table
+                    refreshTable();
+                }
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('EventSource failed:', error);
+                setTimeout(connectToEvents, 5000);
+            };
+        }
+
+        async function fetchRoles() {
+            try {
+                const response = await fetch('/api/roles');
+                const data = await response.json();
+                if (data.success) {
+                    return data.data;
+                }
+                return [];
+            } catch (error) {
+                console.error('Error fetching roles:', error);
+                return [];
+            }
+        }
+
+        async function removeRow(button) {
+            const row = button.closest('tr');
+            const roleCode = row.querySelector('td:first-child').innerText;
+            
+            try {
+                const response = await fetch(`/api/roles/${roleCode}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    row.remove();
+                    updateEntriesInfo();
+                    updateCounts();
+                } else {
+                    alert(data.message || 'Failed to delete role');
+                }
+            } catch (error) {
+                console.error('Error deleting role:', error);
+                alert('Failed to delete role');
+            }
+        }
+
+        async function saveRow(button) {
+            const row = button.closest('tr');
+            const inputs = row.querySelectorAll('input');
+
+            const updatedData = {};
+            inputs.forEach((input, index) => {
+                const value = input.value;
+                const cell = input.closest('td');
+                cell.innerHTML = value;
+                if (index === 0) updatedData.roleCode = value;
+                if (index === 1) updatedData.roleDescription = value;
+                if (index === 2) updatedData.status = value;
+            });
+
+            try {
+                const response = await fetch(`/api/roles/${updatedData.roleCode}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const statusCell = row.querySelector('td:nth-child(3)');
+                    const statusValue = statusCell.innerText.trim().toUpperCase();
+                    if (statusValue === 'ACTIVE') {
+                        statusCell.innerHTML = '<span class="status-active">ACTIVE</span>';
+                    } else {
+                        statusCell.innerHTML = '<span class="status-inactive">INACTIVE</span>';
+                    }
+
+                    button.innerHTML = '<i class="fas fa-edit"></i>';
+                    button.onclick = function() { editRow(button); };
+                    updateCounts();
+                } else {
+                    alert(data.message || 'Failed to update role');
+                }
+            } catch (error) {
+                console.error('Error updating role:', error);
+                alert('Failed to update role');
+            }
+        }
+
+        async function refreshTable() {
+            const roles = await fetchRoles();
+            const tbody = document.querySelector('tbody');
+            tbody.innerHTML = '';
+
+            roles.forEach(data => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="py-2 px-4 border-b">${data.roleCode}</td>
+                    <td class="py-2 px-4 border-b">${data.roleDescription}</td>
+                    <td class="py-2 px-4 border-b"><span class="status-${data.status.toLowerCase()}">${data.status}</span></td>
+                    <td class="py-2 px-4 border-b">
+                        <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editRow(this)"><i class="fas fa-edit"></i></button>
+                        <button class="text-black px-2 py-1 rounded btn-small" onclick="removeRow(this)"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            updateEntriesInfo();
+            updateCounts();
+        }
+
+        function editRow(button) {
+            const row = button.closest('tr');
+            const cells = row.querySelectorAll('td');
+
+            cells.forEach((cell, index) => {
+                if (index < cells.length - 1) { // Skip the last cell (Actions)
+                    const currentValue = cell.innerText;
+                    cell.innerHTML = `<input type="text" value="${currentValue}" class="border border-gray-300 rounded p-1 w-full">`;
+                }
+            });
+
+            button.innerHTML = '<i class="fas fa-save"></i>';
+            button.onclick = function() { saveRow(button); };
+        }
+
+        function filterRows(status) {
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                const statusCell = row.querySelector('td:nth-child(3)');
+                const statusValue = statusCell.innerText.trim().toUpperCase();
+                if (status === 'ALL' || statusValue === status) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+            updateEntriesInfo();
+        }
+
+        function updateEntriesInfo() {
+            const rows = document.querySelectorAll('tbody tr');
+            const totalEntries = rows.length;
+            const pageSize = parseInt(document.getElementById('pageSize').value, 10);
+            const showingEntries = Math.min(pageSize, totalEntries);
+            document.getElementById('entriesInfo').innerText = `Showing 1 to ${showingEntries} of ${totalEntries} entries`;
+        }
+
+        function updateCounts() {
+            const rows = document.querySelectorAll('tbody tr');
+            const totalEntries = rows.length;
+            const activeEntries = Array.from(rows).filter(row => row.querySelector('td:nth-child(3) span').innerText.trim().toUpperCase() === 'ACTIVE').length;
+            const inactiveEntries = totalEntries - activeEntries;
+
+            document.getElementById('totalCount').innerText = totalEntries;
+            document.getElementById('activeCount').innerText = activeEntries;
+            document.getElementById('inactiveCount').innerText = inactiveEntries;
+        }
+
+        function downloadTable() {
+            const rows = document.querySelectorAll('table tr');
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td, th');
+                const rowData = Array.from(cols).map(col => col.innerText).join(",");
+                csvContent += rowData + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "role_list.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshTable();
+            document.getElementById('pageSize').addEventListener('change', updateEntriesInfo);
+            connectToEvents();
+            document.getElementById('totalCount').addEventListener('click', () => filterRows('ALL'));
+            document.getElementById('activeCount').addEventListener('click', () => filterRows('ACTIVE'));
+            document.getElementById('inactiveCount').addEventListener('click', () => filterRows('INACTIVE'));
+        });
+    </script>
+    <script>
+        // Load the profile picture from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedProfilePic = localStorage.getItem('profilePic');
+            const navbarProfilePic = document.querySelector('#userProfileButton img');
+            if (savedProfilePic && navbarProfilePic) {
+                navbarProfilePic.src = savedProfilePic; // Set the navbar profile picture
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <div class="bg-gray-800 text-white w-full md:w-64 min-h-screen p-4">
+            <h1 class="text-2xl font-bold mb-6">Raise My Voice</h1>
+            <ul>
+                <li class="mb-4">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    <a href="{{ url_for('admin_dashboard') }}" class="hover:text-gray-400">Dashboard</a>
+                </li>
+                <li class="relative">
+                    <i class="fas fa-users-cog mr-2"></i>
+                    <a href="#" class="hover:text-gray-400 focus:outline-none">Admin Management</a>
+                    <ul class="mt-2 w-48 bg-gray-700 text-white rounded-lg shadow-lg">
+                        <li class="px-4 py-2 bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_users') }}">Manage User</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code Maintenance</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            <!-- Navbar -->
+            <nav class="bg-gray-800 text-white p-4 flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold">Raise My Voice</h1>
+                </div>
+                <div class="relative">
+                    <button id="userProfileButton" class="flex items-center focus:outline-none">
+                        <img src="user-profile.png" alt="User Profile" class="h-8 w-8 rounded-full">
+                        <i class="fas fa-chevron-down ml-2"></i>
+                    </button>
+                    <div id="dropdownContent" class="dropdown-content right-0 mt-2 rounded-lg shadow-lg bg-white">
+                        <a href="{{ url_for('change_password') }}">Change Password</a>
+                        <a href="{{ url_for('profile') }}">Update Profile</a>
+                        <a href="{{ url_for('home') }}">Log Out</a>
+                    </div>
+                </div>
+            </nav>
+            <div class="bg-white p-4 rounded-lg shadow-lg mb-4">
+                <div class="flex flex-col md:flex-row items-center justify-between">
+                    <h2 class="text-xl font-bold">Manage Role</h2>
+                    <nav class="text-gray-600 mt-2 md:mt-0">
+                        <a href="{{ url_for('admin') }}" class="hover:underline">Home</a> &gt; <span>Manage Role List</span>
+                    </nav>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-lg mb-4">
+                <h2 class="text-xl font-bold mb-4">Manage Role List</h2>
+                <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                    <div class="flex space-x-4 mb-2 md:mb-0">
+                        <span class="bg-gray-800 text-white px-2 py-1 rounded-full flex items-center">
+                            <i class="fas fa-list mr-1"></i> All <span class="bg-blue-600 text-white px-1 py-0.5 rounded ml-1" id="totalCount">5</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-check mr-1"></i> Active <span class="bg-green-600 text-white px-1 py-0.5 rounded ml-1" id="activeCount">5</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-times mr-1"></i> Inactive <span class="bg-red-600 text-white px-1 py-0.5 rounded ml-1" id="inactiveCount">0</span>
+                        </span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" data-href="{{ url_for('add_role') }}"><i class="fas fa-plus"></i></button>
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="filterRows()"><i class="fas fa-filter"></i></button>
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="refreshTable()"><i class="fas fa-sync-alt"></i></button>
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="downloadTable()"><i class="fas fa-download"></i></button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Role Code</th>
+                                <th class="py-2 px-4 border-b">Role Description</th>
+                                <th class="py-2 px-4 border-b">Status</th>
+                                <th class="py-2 px-4 border-b">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-between mt-2 text-sm">
+                    <div class="flex items-center space-x-2">
+                        <label for="pageSize" class="text-gray-700">Page size:</label>
+                        <select id="pageSize" class="border border-gray-300 rounded p-1">
+                            <option>5</option>
+                            <option>10</option>
+                            <option>15</option>
+                            <option>20</option>
+                        </select>
+                    </div>
+                    <div class="text-gray-700" id="entriesInfo">
+                        Showing 1 to 5 of 5 entries
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-left"></i></button>
+                        <span class="text-gray-700">Page 1</span>
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('userProfileButton').addEventListener('click', function() {
+            var dropdownContent = document.getElementById('dropdownContent');
+            if (dropdownContent.style.display === 'block') {
+                dropdownContent.style.display = 'none';
+            } else {
+                dropdownContent.style.display = 'block';
+            }
+        });
+    </script>
+    <script>
+        document.querySelector('button[data-href]').addEventListener('click', function() {
+            window.location.href = this.dataset.href;
+        });
+    </script>
+</body>
+</html>

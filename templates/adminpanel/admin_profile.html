@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .profile-card {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .profile-pic {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <div class="bg-gray-800 text-white w-full md:w-64 min-h-screen p-4">
+            <h1 class="text-2xl font-bold mb-6">Raise My Voice</h1>
+            <ul>
+                <li class="mb-4">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    <a href="{{ url_for('admin') }}" class="hover:text-gray-400">Dashboard</a>
+                </li>
+                <li class="relative">
+                    <i class="fas fa-users-cog mr-2"></i>
+                    <a href="#" class="hover:text-gray-400 focus:outline-none">Admin Management</a>
+                    <ul class="mt-2 w-48 bg-gray-700 text-white rounded-lg shadow-lg">
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_users') }}">Manage User</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code Maintenance</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            <!-- Navbar -->
+            <nav class="bg-gray-800 text-white p-4 flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold">Raise My Voice</h1>
+                </div>
+                <div class="relative">
+                    <button id="userProfileButton" class="flex items-center focus:outline-none">
+                        <img src="user-profile.png" alt="User Profile" class="h-8 w-8 rounded-full">
+                        <i class="fas fa-chevron-down ml-2"></i>
+                    </button>
+                    <div id="dropdownContent" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
+                        <a href="{{ url_for('change_password') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Change Password</a>
+                        <a href="{{ url_for('admin_profile') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Update Profile</a>
+                        <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Log Out</a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Profile Card -->
+            <div class="bg-white p-6 rounded-lg shadow-lg profile-card">
+                <div class="flex flex-col items-center">
+                    <div class="relative">
+                        <img id="profilePic" src="admin-profile-pic.jpg" alt="Admin Profile Picture" class="profile-pic mb-4">
+                        <input type="file" id="profilePicInput" class="hidden" accept="image/*">
+                        <button id="editProfilePicButton" class="hidden bg-blue-500 text-white px-4 py-2 rounded">Edit Picture</button>
+                    </div>
+                    <label class="w-full mb-2">
+                        <span class="text-gray-700">Name:</span>
+                        <input type="text" id="adminName" value="John Doe" class="border border-gray-300 rounded p-2 w-full" disabled>
+                    </label>
+                    <label class="w-full mb-2">
+                        <span class="text-gray-700">Admin ID:</span>
+                        <input type="text" id="adminId" value="ADM12345" class="border border-gray-300 rounded p-2 w-full" disabled>
+                    </label>
+                    <label class="w-full mb-2">
+                        <span class="text-gray-700">Email:</span>
+                        <input type="email" id="adminEmail" value="admin@example.com" class="border border-gray-300 rounded p-2 w-full" disabled>
+                    </label>
+                    <label class="w-full mb-4">
+                        <span class="text-gray-700">Identity Proof:</span>
+                        <input type="text" id="adminProof" value="Passport" class="border border-gray-300 rounded p-2 w-full" disabled>
+                    </label>
+                    <button id="editProfileButton" class="bg-blue-500 text-white px-4 py-2 rounded">Edit Profile</button>
+                    <button id="saveProfileButton" class="hidden bg-green-500 text-white px-4 py-2 rounded mt-2">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle the user profile dropdown
+        document.getElementById('userProfileButton').addEventListener('click', function () {
+            const dropdownContent = document.getElementById('dropdownContent');
+            dropdownContent.classList.toggle('hidden');
+        });
+
+        // Edit and Save Profile Functionality
+        const editProfileButton = document.getElementById('editProfileButton');
+        const saveProfileButton = document.getElementById('saveProfileButton');
+        const editProfilePicButton = document.getElementById('editProfilePicButton');
+        const profilePicInput = document.getElementById('profilePicInput');
+        const profilePic = document.getElementById('profilePic');
+        const fields = ['adminName', 'adminId', 'adminEmail', 'adminProof'];
+
+        editProfileButton.addEventListener('click', function () {
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                field.disabled = false; // Enable editing
+            });
+            editProfileButton.classList.add('hidden');
+            saveProfileButton.classList.remove('hidden');
+            editProfilePicButton.classList.remove('hidden'); // Show the Edit Picture button
+        });
+
+        saveProfileButton.addEventListener('click', function () {
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                field.disabled = true; // Disable editing
+            });
+            saveProfileButton.classList.add('hidden');
+            editProfileButton.classList.remove('hidden');
+            editProfilePicButton.classList.add('hidden'); // Hide the Edit Picture button
+        });
+
+        // Edit Profile Picture Functionality
+        editProfilePicButton.addEventListener('click', function () {
+            profilePicInput.click(); // Trigger file input click
+        });
+
+        profilePicInput.addEventListener('change', function () {
+            const file = profilePicInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    profilePic.src = e.target.result; // Update the profile picture preview
+                    localStorage.setItem('profilePic', e.target.result); // Save the image to localStorage
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Load the profile picture from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedProfilePic = localStorage.getItem('profilePic');
+            if (savedProfilePic) {
+                profilePic.src = savedProfilePic; // Set the profile picture from localStorage
+            }
+        });
+    </script>
+    <script>
+        // Load the profile picture from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedProfilePic = localStorage.getItem('profilePic');
+            const navbarProfilePic = document.querySelector('#userProfileButton img');
+            if (savedProfilePic && navbarProfilePic) {
+                navbarProfilePic.src = savedProfilePic; // Set the navbar profile picture
+            }
+        });
+    </script>
+</body>
+</html>

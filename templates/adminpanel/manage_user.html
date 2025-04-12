@@ -1,0 +1,492 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage User</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4CAF50;
+        }
+        .toggle-checkbox:checked + .toggle-label::after {
+            transform: translateX(1.5rem);
+        }
+        .toggle-label::after {
+            content: '';
+            display: block;
+            width: 1rem;
+            height: 1rem;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            transform: translateX(0.25rem);
+        }
+        .status-active {
+            color: #10B981;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #EF4444;
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        let eventSource = null;
+
+        function connectToEvents() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/events');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'status_change') {
+                    // Refresh the users table
+                    refreshTable();
+                }
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('EventSource failed:', error);
+                setTimeout(connectToEvents, 5000);
+            };
+        }
+
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/api/users');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                const users = await response.json();
+                return users;
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                return [];
+            }
+        }
+
+        async function removeRow(button) {
+            const row = button.closest('tr');
+            const email = row.querySelector('td:nth-child(2)').innerText;
+            
+            try {
+                const response = await fetch(`/api/admin/users/${email}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    row.remove();
+                    updateEntriesInfo();
+                    updateCounts();
+                } else {
+                    alert(data.message || 'Failed to delete user');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Failed to delete user');
+            }
+        }
+
+        async function saveRow(button) {
+            const row = button.closest('tr');
+            const inputs = row.querySelectorAll('input');
+
+            const updatedData = {};
+            inputs.forEach((input, index) => {
+                const value = input.value;
+                const cell = input.closest('td');
+                cell.innerHTML = value;
+                if (index === 0) updatedData.username = value;
+                if (index === 1) updatedData.email = value;
+                if (index === 2) updatedData.role = value;
+                if (index === 3) updatedData.status = value;
+            });
+
+            try {
+                const response = await fetch(`/api/admin/users/${updatedData.email}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const statusCell = row.querySelector('td:nth-child(4)');
+                    const statusValue = statusCell.innerText.trim().toUpperCase();
+                    if (statusValue === 'ACTIVE') {
+                        statusCell.innerHTML = '<span class="status-active">ACTIVE</span>';
+                    } else {
+                        statusCell.innerHTML = '<span class="status-inactive">INACTIVE</span>';
+                    }
+
+                    button.innerHTML = '<i class="fas fa-edit"></i>';
+                    button.onclick = function() { editRow(button); };
+                    updateCounts();
+                } else {
+                    alert(data.message || 'Failed to update user');
+                }
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Failed to update user');
+            }
+        }
+
+        async function refreshTable() {
+            const users = await fetchUsers();
+            const tableBody = document.getElementById('userTableBody');
+            tableBody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${user.username}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${user.email}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${user.role}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                            ${user.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button onclick="editUser('${user._id}')" class="text-indigo-600 hover:text-indigo-900">Edit</button>
+                        <button onclick="deleteUser('${user._id}')" class="ml-4 text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+            updateEntriesInfo();
+            updateCounts();
+        }
+
+        async function editUser(userId) {
+            try {
+                const response = await fetch(`/api/users/${userId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user');
+                }
+                const user = await response.json();
+                // Populate edit form with user data
+                document.getElementById('editUserId').value = user._id;
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editRole').value = user.role;
+                document.getElementById('editStatus').value = user.status;
+                // Show edit modal
+                document.getElementById('editUserModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error fetching user:', error);
+                alert('Failed to fetch user data');
+            }
+        }
+
+        async function updateUser() {
+            const userId = document.getElementById('editUserId').value;
+            const userData = {
+                username: document.getElementById('editUsername').value,
+                email: document.getElementById('editEmail').value,
+                role: document.getElementById('editRole').value,
+                status: document.getElementById('editStatus').value
+            };
+
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update user');
+                }
+
+                // Hide modal and refresh table
+                document.getElementById('editUserModal').classList.add('hidden');
+                await refreshTable();
+                showToast('User updated successfully');
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Failed to update user');
+            }
+        }
+
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete user');
+                }
+
+                await refreshTable();
+                showToast('User deleted successfully');
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                alert('Failed to delete user');
+            }
+        }
+
+        function filterRows(status) {
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                const statusCell = row.querySelector('td:nth-child(4)');
+                const statusValue = statusCell.innerText.trim().toUpperCase();
+                if (status === 'ALL' || statusValue === status) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+            updateEntriesInfo();
+        }
+
+        function updateEntriesInfo() {
+            const rows = document.querySelectorAll('tbody tr');
+            const totalEntries = rows.length;
+            const pageSize = parseInt(document.getElementById('pageSize').value, 10);
+            const showingEntries = Math.min(pageSize, totalEntries);
+            document.getElementById('entriesInfo').innerText = `Showing 1 to ${showingEntries} of ${totalEntries} entries`;
+        }
+
+        function updateCounts() {
+            const rows = document.querySelectorAll('tbody tr');
+            const totalEntries = rows.length;
+            const activeEntries = Array.from(rows).filter(row => row.querySelector('td:nth-child(4) span').innerText.trim().toUpperCase() === 'ACTIVE').length;
+            const inactiveEntries = totalEntries - activeEntries;
+
+            document.getElementById('totalCount').innerText = totalEntries;
+            document.getElementById('activeCount').innerText = activeEntries;
+            document.getElementById('inactiveCount').innerText = inactiveEntries;
+        }
+        function downloadTable() {
+            const rows = document.querySelectorAll('table tr');
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td, th');
+                const rowData = Array.from(cols).map(col => col.innerText).join(",");
+                csvContent += rowData + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "user_list.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshTable();
+            document.getElementById('pageSize').addEventListener('change', updateEntriesInfo);
+            document.getElementById('totalCount').addEventListener('click', () => filterRows('ALL'));
+            document.getElementById('activeCount').addEventListener('click', () => filterRows('ACTIVE'));
+            document.getElementById('inactiveCount').addEventListener('click', () => filterRows('INACTIVE'));
+            connectToEvents();
+        });
+    </script>
+    <script>
+        // Load the profile picture from localStorage on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedProfilePic = localStorage.getItem('profilePic');
+            const navbarProfilePic = document.querySelector('#userProfileButton img');
+            if (savedProfilePic && navbarProfilePic) {
+                navbarProfilePic.src = savedProfilePic; // Set the navbar profile picture
+            }
+        });
+    </script>
+</head>
+<body class="bg-gray-100">
+    <div class="flex flex-col md:flex-row">
+        <!-- Sidebar -->
+        <div class="bg-gray-800 text-white w-full md:w-64 min-h-screen p-4">
+            <h1 class="text-2xl font-bold mb-6">Raise My Voice</h1>
+            <ul>
+                <li class="mb-4">
+                    <i class="fas fa-tachometer-alt mr-2"></i>
+                    <a href="{{ url_for('admin_dashboard') }}" class="hover:text-gray-400">Dashboard</a>
+                </li>
+                <li class="relative">
+                    <i class="fas fa-users-cog mr-2"></i>
+                    <a href="#" class="hover:text-gray-400 focus:outline-none">Admin Management</a>
+                    <ul class="mt-2 w-48 bg-gray-700 text-white rounded-lg shadow-lg">
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a></li>
+                        <li class="px-4 py-2 bg-gray-600"><a href="{{ url_for('manage_users') }}">Manage User</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code Maintenance</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <!-- Main Content -->
+        <div class="flex-1 p-6">
+            <!-- Navbar -->
+            <nav class="bg-gray-800 text-white p-4 flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold">Raise My Voice</h1>
+                </div>
+                <div class="relative">
+                    <button id="userProfileButton" class="flex items-center focus:outline-none">
+                        <img src="user-profile.png" alt="User Profile" class="h-8 w-8 rounded-full">
+                        <i class="fas fa-chevron-down ml-2"></i>
+                    </button>
+                    <div id="dropdownContent" class="dropdown-content right-0 mt-2 rounded-lg shadow-lg bg-white">
+                        <a href="{{ url_for('change_password') }}">Change Password</a>
+                        <a href="{{ url_for('profile') }}">Update Profile</a>
+                        <a href="{{ url_for('home') }}">Log Out</a>
+                    </div>
+                </div>
+            </nav>
+           
+    
+
+    <!-- Breadcrumb -->
+    <div class="bg-white p-4 rounded-lg shadow-lg mb-4">
+        <div class="flex justify-between items-center">
+            <h2 class="text-xl font-bold">Manage User</h2>
+            <nav class="text-gray-600">
+                <a href="{{ url_for('admin') }}" class="hover:underline">Home</a> &gt; <span>Manage User List</span>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-xl font-bold mb-4">Manage User List</h2>
+        <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+            <!-- Counters -->
+            <div class="flex space-x-4 mb-2 md:mb-0">
+                <span class="bg-gray-800 text-white px-2 py-1 rounded-full flex items-center">
+                    <i class="fas fa-list mr-1"></i> All <span id="totalCount" class="bg-blue-600 text-white px-1 py-0.5 rounded ml-1">5</span>
+                </span>
+                <span class="flex items-center">
+                    <i class="fas fa-check mr-1"></i> Active <span id="activeCount" class="bg-green-600 text-white px-1 py-0.5 rounded ml-1">5</span>
+                </span>
+                <span class="flex items-center">
+                    <i class="fas fa-times mr-1"></i> Inactive <span id="inactiveCount" class="bg-red-600 text-white px-1 py-0.5 rounded ml-1">0</span>
+                </span>
+            </div>
+            <!-- Action Buttons -->
+            <div class="flex space-x-2">
+                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" data-href="{{ url_for('add_role') }}"><i class="fas fa-plus"></i></button>
+                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="filterRows()"><i class="fas fa-filter"></i></button>
+                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="refreshTable()"><i class="fas fa-sync-alt"></i></button>
+                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="downloadTable()"><i class="fas fa-download"></i></button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr>
+                        <th class="py-2 px-4 border-b">Username</th>
+                        <th class="py-2 px-4 border-b">Email ID</th>
+                        <th class="py-2 px-4 border-b">Role</th>
+                        <th class="py-2 px-4 border-b">Status</th>
+                        <th class="py-2 px-4 border-b">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr>
+                        <td class="py-2 px-4 border-b">admin</td>
+                        <td class="py-2 px-4 border-b">admin@example.com</td>
+                        <td class="py-2 px-4 border-b">Admin</td>
+                        <td class="py-2 px-4 border-b"><span class="status-active">ACTIVE</span></td>
+                        <td class="py-2 px-4 border-b">
+                            <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
+                            <button class="text-black px-2 py-1 rounded btn-small" onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-4 border-b">user1</td>
+                        <td class="py-2 px-4 border-b">user1@example.com</td>
+                        <td class="py-2 px-4 border-b">User</td>
+                        <td class="py-2 px-4 border-b"><span class="status-active">ACTIVE</span></td>
+                        <td class="py-2 px-4 border-b">
+                            <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
+                            <button class="text-black px-2 py-1 rounded btn-small" onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-4 border-b">user2</td>
+                        <td class="py-2 px-4 border-b">user2@example.com</td>
+                        <td class="py-2 px-4 border-b">User</td>
+                        <td class="py-2 px-4 border-b"><span class="status-inactive">INACTIVE</span></td>
+                        <td class="py-2 px-4 border-b">
+                            <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
+                            <button class="text-black px-2 py-1 rounded btn-small" onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between mt-2 text-sm">
+            <div class="flex items-center space-x-2">
+                <label for="pageSize" class="text-gray-700">Page size:</label>
+                <select id="pageSize" class="border border-gray-300 rounded p-1">
+                    <option>5</option>
+                    <option>10</option>
+                    <option>15</option>
+                    <option>20</option>
+                </select>
+            </div>
+            <div id="entriesInfo" class="text-gray-700">
+                Showing 1 to 5 of 5 entries
+            </div>
+            <div class="flex items-center space-x-2">
+                <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-left"></i></button>
+                <span class="text-gray-700">Page 1</span>
+                <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('userProfileButton').addEventListener('click', function() {
+            var dropdownContent = document.getElementById('dropdownContent');
+            if (dropdownContent.style.display === 'block') {
+                dropdownContent.style.display = 'none';
+            } else {
+                dropdownContent.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
