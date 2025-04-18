@@ -30,7 +30,7 @@
             <ul>
                 <li class="mb-4">
                     <i class="fas fa-tachometer-alt mr-2"></i>
-                    <a href="{{ url_for('admin') }}" class="hover:text-gray-400">Dashboard</a>
+                    <a href="{{ url_for('admin_dashboard') }}" class="hover:text-gray-400">Dashboard</a>
                 </li>
                 <li class="relative">
                     <i class="fas fa-users-cog mr-2"></i>
@@ -59,7 +59,7 @@
                     <div id="dropdownContent" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
                         <a href="{{ url_for('change_password') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Change Password</a>
                         <a href="{{ url_for('admin_profile') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Update Profile</a>
-                        <a href="{{ url_for('logout') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Log Out</a>
+                        <a href="{{ url_for('home') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Log Out</a>
                     </div>
                 </div>
             </nav>

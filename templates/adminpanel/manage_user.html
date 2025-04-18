@@ -1,4 +1,5 @@
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,24 +13,29 @@
             right: 0;
             background-color: white;
             min-width: 160px;
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
             z-index: 1;
         }
+
         .dropdown-content a {
             color: black;
             padding: 12px 16px;
             text-decoration: none;
             display: block;
         }
+
         .dropdown-content a:hover {
             background-color: #f1f1f1;
         }
-        .toggle-checkbox:checked + .toggle-label {
+
+        .toggle-checkbox:checked+.toggle-label {
             background-color: #4CAF50;
         }
-        .toggle-checkbox:checked + .toggle-label::after {
+
+        .toggle-checkbox:checked+.toggle-label::after {
             transform: translateX(1.5rem);
         }
+
         .toggle-label::after {
             content: '';
             display: block;
@@ -40,10 +46,12 @@
             transition: transform 0.2s;
             transform: translateX(0.25rem);
         }
+
         .status-active {
             color: #10B981;
             font-weight: bold;
         }
+
         .status-inactive {
             color: #EF4444;
             font-weight: bold;
@@ -56,18 +64,18 @@
             if (eventSource) {
                 eventSource.close();
             }
-            
+
             eventSource = new EventSource('/api/events');
-            
-            eventSource.onmessage = function(event) {
+
+            eventSource.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 if (data.type === 'status_change') {
                     // Refresh the users table
                     refreshTable();
                 }
             };
-            
-            eventSource.onerror = function(error) {
+
+            eventSource.onerror = function (error) {
                 console.error('EventSource failed:', error);
                 setTimeout(connectToEvents, 5000);
             };
@@ -90,7 +98,7 @@
         async function removeRow(button) {
             const row = button.closest('tr');
             const email = row.querySelector('td:nth-child(2)').innerText;
-            
+
             try {
                 const response = await fetch(`/api/admin/users/${email}`, {
                     method: 'DELETE'
@@ -143,7 +151,7 @@
                     }
 
                     button.innerHTML = '<i class="fas fa-edit"></i>';
-                    button.onclick = function() { editRow(button); };
+                    button.onclick = function () { editRow(button); };
                     updateCounts();
                 } else {
                     alert(data.message || 'Failed to update user');
@@ -328,6 +336,7 @@
         });
     </script>
 </head>
+
 <body class="bg-gray-100">
     <div class="flex flex-col md:flex-row">
         <!-- Sidebar -->
@@ -336,15 +345,17 @@
             <ul>
                 <li class="mb-4">
                     <i class="fas fa-tachometer-alt mr-2"></i>
-                    <a href="{{ url_for('admin_dashboard') }}" class="hover:text-gray-400">Dashboard</a>
+                    <a href="{{ url_for('admin') }}" class="hover:text-gray-400">Dashboard</a>
                 </li>
                 <li class="relative">
                     <i class="fas fa-users-cog mr-2"></i>
                     <a href="#" class="hover:text-gray-400 focus:outline-none">Admin Management</a>
                     <ul class="mt-2 w-48 bg-gray-700 text-white rounded-lg shadow-lg">
-                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a>
+                        </li>
                         <li class="px-4 py-2 bg-gray-600"><a href="{{ url_for('manage_users') }}">Manage User</a></li>
-                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code Maintenance</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code
+                                Maintenance</a></li>
                     </ul>
                 </li>
             </ul>
@@ -363,123 +374,139 @@
                     </button>
                     <div id="dropdownContent" class="dropdown-content right-0 mt-2 rounded-lg shadow-lg bg-white">
                         <a href="{{ url_for('change_password') }}">Change Password</a>
-                        <a href="{{ url_for('profile') }}">Update Profile</a>
+                        <a href="{{ url_for('admin_profile') }}">Update Profile</a>
                         <a href="{{ url_for('home') }}">Log Out</a>
                     </div>
                 </div>
             </nav>
-           
-    
 
-    <!-- Breadcrumb -->
-    <div class="bg-white p-4 rounded-lg shadow-lg mb-4">
-        <div class="flex justify-between items-center">
-            <h2 class="text-xl font-bold">Manage User</h2>
-            <nav class="text-gray-600">
-                <a href="{{ url_for('admin') }}" class="hover:underline">Home</a> &gt; <span>Manage User List</span>
-            </nav>
+
+
+            <!-- Breadcrumb -->
+            <div class="bg-white p-4 rounded-lg shadow-lg mb-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Manage User</h2>
+                    <nav class="text-gray-600">
+                        <a href="{{ url_for('admin') }}" class="hover:underline">Home</a> &gt; <span>Manage User
+                            List</span>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Main Card -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-bold mb-4">Manage User List</h2>
+                <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                    <!-- Counters -->
+                    <div class="flex space-x-4 mb-2 md:mb-0">
+                        <span class="bg-gray-800 text-white px-2 py-1 rounded-full flex items-center">
+                            <i class="fas fa-list mr-1"></i> All <span id="totalCount"
+                                class="bg-blue-600 text-white px-1 py-0.5 rounded ml-1">5</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-check mr-1"></i> Active <span id="activeCount"
+                                class="bg-green-600 text-white px-1 py-0.5 rounded ml-1">5</span>
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-times mr-1"></i> Inactive <span id="inactiveCount"
+                                class="bg-red-600 text-white px-1 py-0.5 rounded ml-1">0</span>
+                        </span>
+                    </div>
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-2">
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small"
+                            data-href="{{ url_for('add_role') }}"><i class="fas fa-plus"></i></button>
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="filterRows()"><i
+                                class="fas fa-filter"></i></button>
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="refreshTable()"><i
+                                class="fas fa-sync-alt"></i></button>
+                        <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="downloadTable()"><i
+                                class="fas fa-download"></i></button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr>
+                                <th class="py-2 px-4 border-b">Username</th>
+                                <th class="py-2 px-4 border-b">Email ID</th>
+                                <th class="py-2 px-4 border-b">Role</th>
+                                <th class="py-2 px-4 border-b">Status</th>
+                                <th class="py-2 px-4 border-b">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <tr>
+                                <td class="py-2 px-4 border-b">admin</td>
+                                <td class="py-2 px-4 border-b">admin@example.com</td>
+                                <td class="py-2 px-4 border-b">Admin</td>
+                                <td class="py-2 px-4 border-b"><span class="status-active">ACTIVE</span></td>
+                                <td class="py-2 px-4 border-b">
+                                    <button class="text-black px-2 py-1 rounded mr-2 btn-small"
+                                        onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
+                                    <button class="text-black px-2 py-1 rounded btn-small"
+                                        onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b">user1</td>
+                                <td class="py-2 px-4 border-b">user1@example.com</td>
+                                <td class="py-2 px-4 border-b">User</td>
+                                <td class="py-2 px-4 border-b"><span class="status-active">ACTIVE</span></td>
+                                <td class="py-2 px-4 border-b">
+                                    <button class="text-black px-2 py-1 rounded mr-2 btn-small"
+                                        onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
+                                    <button class="text-black px-2 py-1 rounded btn-small"
+                                        onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 px-4 border-b">user2</td>
+                                <td class="py-2 px-4 border-b">user2@example.com</td>
+                                <td class="py-2 px-4 border-b">User</td>
+                                <td class="py-2 px-4 border-b"><span class="status-inactive">INACTIVE</span></td>
+                                <td class="py-2 px-4 border-b">
+                                    <button class="text-black px-2 py-1 rounded mr-2 btn-small"
+                                        onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
+                                    <button class="text-black px-2 py-1 rounded btn-small"
+                                        onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div class="flex items-center justify-between mt-2 text-sm">
+                    <div class="flex items-center space-x-2">
+                        <label for="pageSize" class="text-gray-700">Page size:</label>
+                        <select id="pageSize" class="border border-gray-300 rounded p-1">
+                            <option>5</option>
+                            <option>10</option>
+                            <option>15</option>
+                            <option>20</option>
+                        </select>
+                    </div>
+                    <div id="entriesInfo" class="text-gray-700">
+                        Showing 1 to 5 of 5 entries
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i
+                                class="fas fa-chevron-left"></i></button>
+                        <span class="text-gray-700">Page 1</span>
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i
+                                class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <!-- Main Card -->
-    <div class="bg-white p-6 rounded-lg shadow-lg">
-        <h2 class="text-xl font-bold mb-4">Manage User List</h2>
-        <div class="flex flex-col md:flex-row items-center justify-between mb-4">
-            <!-- Counters -->
-            <div class="flex space-x-4 mb-2 md:mb-0">
-                <span class="bg-gray-800 text-white px-2 py-1 rounded-full flex items-center">
-                    <i class="fas fa-list mr-1"></i> All <span id="totalCount" class="bg-blue-600 text-white px-1 py-0.5 rounded ml-1">5</span>
-                </span>
-                <span class="flex items-center">
-                    <i class="fas fa-check mr-1"></i> Active <span id="activeCount" class="bg-green-600 text-white px-1 py-0.5 rounded ml-1">5</span>
-                </span>
-                <span class="flex items-center">
-                    <i class="fas fa-times mr-1"></i> Inactive <span id="inactiveCount" class="bg-red-600 text-white px-1 py-0.5 rounded ml-1">0</span>
-                </span>
-            </div>
-            <!-- Action Buttons -->
-            <div class="flex space-x-2">
-                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" data-href="{{ url_for('add_role') }}"><i class="fas fa-plus"></i></button>
-                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="filterRows()"><i class="fas fa-filter"></i></button>
-                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="refreshTable()"><i class="fas fa-sync-alt"></i></button>
-                <button class="bg-blue-600 text-white px-2 py-1 rounded btn-small" onclick="downloadTable()"><i class="fas fa-download"></i></button>
-            </div>
-        </div>
-
-        <!-- Table -->
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white">
-                <thead>
-                    <tr>
-                        <th class="py-2 px-4 border-b">Username</th>
-                        <th class="py-2 px-4 border-b">Email ID</th>
-                        <th class="py-2 px-4 border-b">Role</th>
-                        <th class="py-2 px-4 border-b">Status</th>
-                        <th class="py-2 px-4 border-b">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="userTableBody">
-                    <tr>
-                        <td class="py-2 px-4 border-b">admin</td>
-                        <td class="py-2 px-4 border-b">admin@example.com</td>
-                        <td class="py-2 px-4 border-b">Admin</td>
-                        <td class="py-2 px-4 border-b"><span class="status-active">ACTIVE</span></td>
-                        <td class="py-2 px-4 border-b">
-                            <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
-                            <button class="text-black px-2 py-1 rounded btn-small" onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="py-2 px-4 border-b">user1</td>
-                        <td class="py-2 px-4 border-b">user1@example.com</td>
-                        <td class="py-2 px-4 border-b">User</td>
-                        <td class="py-2 px-4 border-b"><span class="status-active">ACTIVE</span></td>
-                        <td class="py-2 px-4 border-b">
-                            <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
-                            <button class="text-black px-2 py-1 rounded btn-small" onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="py-2 px-4 border-b">user2</td>
-                        <td class="py-2 px-4 border-b">user2@example.com</td>
-                        <td class="py-2 px-4 border-b">User</td>
-                        <td class="py-2 px-4 border-b"><span class="status-inactive">INACTIVE</span></td>
-                        <td class="py-2 px-4 border-b">
-                            <button class="text-black px-2 py-1 rounded mr-2 btn-small" onclick="editUser('${user._id}')"><i class="fas fa-edit"></i></button>
-                            <button class="text-black px-2 py-1 rounded btn-small" onclick="deleteUser('${user._id}')"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="flex items-center justify-between mt-2 text-sm">
-            <div class="flex items-center space-x-2">
-                <label for="pageSize" class="text-gray-700">Page size:</label>
-                <select id="pageSize" class="border border-gray-300 rounded p-1">
-                    <option>5</option>
-                    <option>10</option>
-                    <option>15</option>
-                    <option>20</option>
-                </select>
-            </div>
-            <div id="entriesInfo" class="text-gray-700">
-                Showing 1 to 5 of 5 entries
-            </div>
-            <div class="flex items-center space-x-2">
-                <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-left"></i></button>
-                <span class="text-gray-700">Page 1</span>
-                <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-right"></i></button>
-            </div>
-        </div>
     </div>
-</div>
-            </div>
-        </div>
     </div>
     <script>
-        document.getElementById('userProfileButton').addEventListener('click', function() {
+        document.getElementById('userProfileButton').addEventListener('click', function () {
             var dropdownContent = document.getElementById('dropdownContent');
             if (dropdownContent.style.display === 'block') {
                 dropdownContent.style.display = 'none';
@@ -489,4 +516,5 @@
         });
     </script>
 </body>
+
 </html>

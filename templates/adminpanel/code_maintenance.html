@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,24 +12,29 @@
             color: #10B981;
             font-weight: bold;
         }
+
         .status-inactive {
             color: #EF4444;
             font-weight: bold;
         }
+
         .filter-badge {
             padding: 2px 6px;
             border-radius: 12px;
             font-size: 0.8rem;
             margin-left: 4px;
         }
+
         .btn-small {
             transition: all 0.3s;
         }
+
         .btn-small:hover {
             opacity: 0.8;
         }
     </style>
 </head>
+
 <body class="bg-gray-100">
     <div class="flex flex-col md:flex-row">
         <!-- Sidebar -->
@@ -43,9 +49,12 @@
                     <i class="fas fa-users-cog mr-2"></i>
                     <a href="#" class="hover:text-gray-400 focus:outline-none">Admin Management</a>
                     <ul class="mt-2 w-48 bg-gray-700 text-white rounded-lg shadow-lg">
-                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a></li>
-                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_users') }}">Manage User</a></li>
-                        <li class="px-4 py-2 bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code Maintenance</a></li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_roles') }}">Manage Role</a>
+                        </li>
+                        <li class="px-4 py-2 hover:bg-gray-600"><a href="{{ url_for('manage_users') }}">Manage User</a>
+                        </li>
+                        <li class="px-4 py-2 bg-gray-600"><a href="{{ url_for('code_maintenance') }}">Code
+                                Maintenance</a></li>
                     </ul>
                 </li>
             </ul>
@@ -54,48 +63,51 @@
         <!-- Main Content -->
         <div class="flex-1 p-6">
             <!-- Navbar -->
-<nav class="bg-gray-800 text-white p-4 flex justify-between items-center mb-4">
-    <div class="flex items-center">
-        <h1 class="text-xl font-bold">Raise My Voice</h1>
-    </div>
-    <div class="relative">
-        <button id="userProfileButton" class="dropdown-content right-0 mt-2 rounded-lg shadow-lg bg-white">
-            <img src="user-profile.png" alt="User Profile" class="h-8 w-8 rounded-full">
-            <i class="fas fa-chevron-down ml-2"></i>
-        </button>
-        <div id="dropdownContent" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
-            <a href="{{ url_for('change_password') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Change Password</a>
-            <a href="{{ url_for('profile') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Update Profile</a>
-            <a href="{{ url_for('home') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Log Out</a>
-        </div>
-    </div>
-</nav>
+            <nav class="bg-gray-800 text-white p-4 flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold">Raise My Voice</h1>
+                </div>
+                <div class="relative">
+                    <button id="userProfileButton" class="dropdown-content right-0 mt-2 rounded-lg shadow-lg bg-white">
+                        <img src="user-profile.png" alt="User Profile" class="h-8 w-8 rounded-full">
+                        <i class="fas fa-chevron-down ml-2"></i>
+                    </button>
+                    <div id="dropdownContent" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg">
+                        <a href="{{ url_for('change_password') }}"
+                            class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Change Password</a>
+                        <a href="{{ url_for('admin_profile') }}"
+                            class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Update Profile</a>
+                        <a href="{{ url_for('home') }}" class="block px-4 py-2 text-gray-800 hover:bg-gray-200">Log
+                            Out</a>
+                    </div>
+                </div>
+            </nav>
 
-<script>
-    // Toggle the dropdown menu when the user clicks the profile button
-    document.getElementById('userProfileButton').addEventListener('click', function () {
-        const dropdownContent = document.getElementById('dropdownContent');
-        dropdownContent.classList.toggle('hidden');
-    });
+            <script>
+                // Toggle the dropdown menu when the user clicks the profile button
+                document.getElementById('userProfileButton').addEventListener('click', function () {
+                    const dropdownContent = document.getElementById('dropdownContent');
+                    dropdownContent.classList.toggle('hidden');
+                });
 
-    // Close the dropdown menu when clicking outside of it
-    document.addEventListener('click', function (event) {
-        const userProfileButton = document.getElementById('userProfileButton');
-        const dropdownContent = document.getElementById('dropdownContent');
-        if (!userProfileButton.contains(event.target) && !dropdownContent.contains(event.target)) {
-            dropdownContent.classList.add('hidden');
-        }
-    });
+                // Close the dropdown menu when clicking outside of it
+                document.addEventListener('click', function (event) {
+                    const userProfileButton = document.getElementById('userProfileButton');
+                    const dropdownContent = document.getElementById('dropdownContent');
+                    if (!userProfileButton.contains(event.target) && !dropdownContent.contains(event.target)) {
+                        dropdownContent.classList.add('hidden');
+                    }
+                });
 
-    // Load the profile picture from localStorage on page load
-    document.addEventListener('DOMContentLoaded', function () {
-        const savedProfilePic = localStorage.getItem('profilePic');
-        const navbarProfilePic = document.querySelector('#userProfileButton img');
-        if (savedProfilePic && navbarProfilePic) {
-            navbarProfilePic.src = savedProfilePic; // Set the navbar profile picture
-        }
-    });
-</script>
+                // Load the profile picture from localStorage on page load
+                document.addEventListener('DOMContentLoaded', function () {
+                    const savedProfilePic = localStorage.getItem('profilePic');
+                    const navbarProfilePic = document.querySelector('#userProfileButton img');
+                    if (savedProfilePic && navbarProfilePic) {
+                        navbarProfilePic.src = savedProfilePic; // Set the navbar profile picture
+                    }
+                });
+            </script>
 
             <div class="flex justify-between items-center mb-4">
                 <h1 class="text-2xl font-bold">Code Maintenance</h1>
@@ -107,7 +119,8 @@
             <!-- Choose Field Dropdown -->
             <div class="bg-white p-4 rounded-lg shadow-lg mb-4">
                 <label class="text-gray-700 font-bold">Choose Field:</label>
-                <select id="categoryDropdown" class="w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="categoryDropdown"
+                    class="w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Select Field</option>
                     <option value="organizationalCategory">Organizational Category</option>
                     <option value="specificRole">Specific Role</option>
@@ -121,20 +134,28 @@
                 <div class="flex justify-between items-center mb-4">
                     <div class="flex space-x-4">
                         <button onclick="filterRows('ALL')" class="flex items-center px-3 py-1 bg-gray-200 rounded">
-                            <i class="fas fa-list mr-2"></i>All <span id="totalCount" class="filter-badge bg-blue-500 text-white">0</span>
+                            <i class="fas fa-list mr-2"></i>All <span id="totalCount"
+                                class="filter-badge bg-blue-500 text-white">0</span>
                         </button>
                         <button onclick="filterRows('ACTIVE')" class="flex items-center px-3 py-1 bg-gray-200 rounded">
-                            <i class="fas fa-check mr-2"></i>Active <span id="activeCount" class="filter-badge bg-green-500 text-white">0</span>
+                            <i class="fas fa-check mr-2"></i>Active <span id="activeCount"
+                                class="filter-badge bg-green-500 text-white">0</span>
                         </button>
-                        <button onclick="filterRows('INACTIVE')" class="flex items-center px-3 py-1 bg-gray-200 rounded">
-                            <i class="fas fa-times mr-2"></i>Inactive <span id="inactiveCount" class="filter-badge bg-red-500 text-white">0</span>
+                        <button onclick="filterRows('INACTIVE')"
+                            class="flex items-center px-3 py-1 bg-gray-200 rounded">
+                            <i class="fas fa-times mr-2"></i>Inactive <span id="inactiveCount"
+                                class="filter-badge bg-red-500 text-white">0</span>
                         </button>
                     </div>
                     <div class="flex space-x-2">
-                        <input id="filterInput" type="text" placeholder="Search..." class="px-3 py-1 border rounded" oninput="applyFilter()">
-                        <button onclick="addNewRow()" class="px-3 py-1 bg-blue-500 text-white rounded"><i class="fas fa-plus mr-1"></i>Add</button>
-                        <button onclick="refreshTable()" class="px-3 py-1 bg-blue-500 text-white rounded"><i class="fas fa-sync mr-1"></i>Refresh</button>
-                        <button onclick="downloadTable()" class="px-3 py-1 bg-blue-500 text-white rounded"><i class="fas fa-download mr-1"></i>Download</button>
+                        <input id="filterInput" type="text" placeholder="Search..." class="px-3 py-1 border rounded"
+                            oninput="applyFilter()">
+                        <button onclick="addNewRow()" class="px-3 py-1 bg-blue-500 text-white rounded"><i
+                                class="fas fa-plus mr-1"></i>Add</button>
+                        <button onclick="refreshTable()" class="px-3 py-1 bg-blue-500 text-white rounded"><i
+                                class="fas fa-sync mr-1"></i>Refresh</button>
+                        <button onclick="downloadTable()" class="px-3 py-1 bg-blue-500 text-white rounded"><i
+                                class="fas fa-download mr-1"></i>Download</button>
                     </div>
                 </div>
 
@@ -142,10 +163,18 @@
                     <table class="min-w-full">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Code</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Description</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status</th>
+                                <th
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody" class="bg-white divide-y divide-gray-200">
@@ -167,9 +196,11 @@
                         Showing 1 to 5 of 5 entries
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-left"></i></button>
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i
+                                class="fas fa-chevron-left"></i></button>
                         <span class="text-gray-700">Page 1</span>
-                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i class="fas fa-chevron-right"></i></button>
+                        <button class="bg-gray-300 text-gray-700 px-2 py-1 rounded btn-small"><i
+                                class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
             </div>
@@ -183,21 +214,21 @@
             if (eventSource) {
                 eventSource.close();
             }
-            
+
             eventSource = new EventSource('/api/events');
-            
-            eventSource.onmessage = function(event) {
+
+            eventSource.onmessage = function (event) {
                 const data = JSON.parse(event.data);
                 if (data.type === 'status_change') {
                     // Refresh the current table
                     refreshTable();
-                    
+
                     // Show a notification
                     showNotification(`Status updated for code: ${data.code}`);
                 }
             };
-            
-            eventSource.onerror = function(error) {
+
+            eventSource.onerror = function (error) {
                 console.error('EventSource failed:', error);
                 // Attempt to reconnect after 5 seconds
                 setTimeout(connectToEvents, 5000);
@@ -209,10 +240,10 @@
             const notification = document.createElement('div');
             notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg';
             notification.textContent = message;
-            
+
             // Add to document
             document.body.appendChild(notification);
-            
+
             // Remove after 3 seconds
             setTimeout(() => {
                 notification.remove();
@@ -266,9 +297,9 @@
                     }
 
                     button.innerHTML = '<i class="fas fa-edit"></i>';
-                    button.onclick = function() { editRow(button); };
+                    button.onclick = function () { editRow(button); };
                     updateCounts();
-                    
+
                     // Refresh all related tables in the application
                     refreshAllTables();
                 } else {
@@ -308,7 +339,7 @@
         async function refreshAllTables() {
             // Refresh the current table
             await refreshTable();
-            
+
             // Show a notification that changes have been applied
             showNotification('Changes have been applied across the application');
         }
@@ -336,7 +367,7 @@
             });
 
             button.innerHTML = '<i class="fas fa-save"></i>';
-            button.onclick = function() { saveRow(button); };
+            button.onclick = function () { saveRow(button); };
         }
 
         function filterRows(status) {
@@ -464,4 +495,5 @@
         }
     </script>
 </body>
+
 </html>

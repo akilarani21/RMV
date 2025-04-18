@@ -1,8 +1,16 @@
+import os
+import sys
+from pathlib import Path
+
+# Add the project root directory to the Python path
+project_root = str(Path(__file__).parent.parent)
+if project_root not in sys.path:
+    sys.path.append(project_root)
+
 import re
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, jsonify, Response, send_from_directory, abort
 from pymongo import MongoClient
 from datetime import datetime, timedelta
-import os
 import uuid
 import json
 import calendar
@@ -33,7 +41,12 @@ import humanize
 import pytz
 import time
 from pymongo import WriteConcern
-from bs4 import BeautifulSoup
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    print("Warning: BeautifulSoup4 not found. Some features may not work properly.")
+    BeautifulSoup = None
 
 # Ensure JSON response for API routes
 def json_response(f):
@@ -1180,64 +1193,67 @@ def update_complaint_status(complaint_id):
 
 # Admin Panel Routes
 @app.route('/admin')
-def admin_dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/admin_welcome.html', title='Admin Dashboard')
+def admin():
+    try:
+        return render_template('adminpanel/admin_welcome.html', title='Admin Dashboard')
+    except Exception as e:
+        print(f"Error in admin dashboard: {str(e)}")
+        flash('An error occurred while loading the dashboard', 'error')
+        return render_template('adminpanel/admin_welcome.html', title='Admin Dashboard')
 
 @app.route('/admin/manage_users')
 def manage_users():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/manage_user.html')
-
-@app.route('/admin/add_user')
-def add_user():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/add_user.html')
+    try:
+        return render_template('adminpanel/manage_user.html')
+    except Exception as e:
+        print(f"Error in manage_users: {str(e)}")
+        flash('An error occurred while loading the page', 'error')
+        return render_template('adminpanel/manage_user.html')
 
 @app.route('/admin/manage_roles')
 def manage_roles():
     try:
-        if 'user_id' not in session:
-            print("No user_id in session, redirecting to login")
-            return redirect(url_for('login'))
-        
-        print("Session user_id:", session.get('user_id'))
-        print("Attempting to render template: adminpanel/manage_role.html")
-        
-        # Check if template exists
-        import os
-        template_path = os.path.join(app.template_folder, 'adminpanel', 'manage_role.html')
-        if not os.path.exists(template_path):
-            print(f"Template not found at: {template_path}")
-            return jsonify({'success': False, 'message': 'Template not found'}), 500
-            
         return render_template('adminpanel/manage_role.html')
     except Exception as e:
-        print(f"Error in manage_roles route: {str(e)}")
-        import traceback
-        print("Traceback:", traceback.format_exc())
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/admin/add_role')
-def add_role():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/add_role.html')
+        print(f"Error in manage_roles: {str(e)}")
+        flash('An error occurred while loading the page', 'error')
+        return render_template('adminpanel/manage_role.html')
 
 @app.route('/admin/code_maintenance')
 def code_maintenance():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/code_maintenance.html')
+    try:
+        return render_template('adminpanel/code_maintenance.html')
+    except Exception as e:
+        print(f"Error in code_maintenance: {str(e)}")
+        flash('An error occurred while loading the page', 'error')
+        return render_template('adminpanel/code_maintenance.html')
 
 @app.route('/admin/edit_code')
 def edit_code():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/edit_code.html')
+    try:
+        return render_template('adminpanel/edit_code.html')
+    except Exception as e:
+        print(f"Error in edit_code: {str(e)}")
+        flash('An error occurred while loading the page', 'error')
+        return render_template('adminpanel/edit_code.html')
+
+@app.route('/admin/admin-profile')
+def admin_profile():
+    try:
+        return render_template('adminpanel/admin_profile.html')
+    except Exception as e:
+        print(f"Error in admin_profile: {str(e)}")
+        flash('An error occurred while loading the profile', 'error')
+        return render_template('adminpanel/admin_profile.html')
+
+@app.route('/admin/change-password')
+def change_password():
+    try:
+        return render_template('adminpanel/change_password.html')
+    except Exception as e:
+        print(f"Error in change_password: {str(e)}")
+        flash('An error occurred while loading the page', 'error')
+        return render_template('adminpanel/change_password.html')
 
 @app.route('/api/codes', methods=['GET'])
 def get_codes():
@@ -1248,21 +1264,22 @@ def get_codes():
         print(f"Error fetching codes: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to fetch codes'}), 500
 
-# Add this after the imports
-connected_clients = set()
-
 @app.route('/api/events')
 def events():
-    def generate():
-        connected_clients.add(1)  # Simple way to track connected clients
-        try:
-            while True:
-                # This will be updated by the update_code function
-                yield "data: {}\n\n"
-        finally:
-            connected_clients.remove(1)
+    try:
+        def generate():
+            connected_clients.add(1)  # Simple way to track connected clients
+            try:
+                while True:
+                    # This will be updated by the update_code function
+                    yield "data: {}\n\n"
+            finally:
+                connected_clients.remove(1)
 
-    return Response(generate(), mimetype='text/event-stream')
+        return Response(generate(), mimetype='text/event-stream')
+    except Exception as e:
+        print(f"Error in events: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to establish event stream'}), 500
 
 def broadcast_status_change(code, status):
     """Broadcast status change to all connected clients"""
@@ -1499,6 +1516,15 @@ def get_roles():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/admin/add_role')
+def add_role():
+    try:
+        return render_template('adminpanel/add_role.html')
+    except Exception as e:
+        print(f"Error in add_role: {str(e)}")
+        flash('An error occurred while loading the page', 'error')
+        return render_template('adminpanel/add_role.html')
+
 @app.route('/api/roles', methods=['POST'])
 def add_role_api():
     try:
@@ -1556,39 +1582,26 @@ def delete_role(roleCode):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
-@app.route('/admin/admin-profile')
-def admin_profile():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/admin_profile.html')
-
-@app.route('/admin/change-password')
-def change_password():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    return render_template('adminpanel/change_password.html')
-
-# API endpoints for admin profile management
 @app.route('/api/admin/profile', methods=['GET'])
 def get_admin_profile():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
     try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'}), 401
+        
         user = admin_user_collection.find_one({'_id': ObjectId(session['user_id'])}, {'_id': 0, 'password': 0})
         if not user:
             return jsonify({'success': False, 'message': 'User not found'}), 404
         return jsonify({'success': True, 'data': user})
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Error getting admin profile: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to get profile'}), 500
 
 @app.route('/api/admin/profile', methods=['PUT'])
 def update_admin_profile():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
     try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'}), 401
+        
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'message': 'No data provided'}), 400
@@ -1607,13 +1620,15 @@ def update_admin_profile():
         else:
             return jsonify({'success': False, 'message': 'No changes made'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Error updating admin profile: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to update profile'}), 500
 
 @app.route('/api/admin/change-password', methods=['POST'])
 def change_admin_password():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Not logged in'}), 401
     try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'}), 401
+        
         data = request.get_json()
         if not all(key in data for key in ['current_password', 'new_password', 'confirm_password']):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
@@ -1645,4 +1660,10 @@ def change_admin_password():
         else:
             return jsonify({'success': False, 'message': 'Failed to update password'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Error changing admin password: {str(e)}")
+        return jsonify({'success': False, 'message': 'Failed to change password'}), 500
+
+if __name__ == '__main__':
+    # Initialize the app
+    initialize_app()
+    app.run(debug=True)
