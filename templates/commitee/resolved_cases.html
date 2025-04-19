@@ -1,0 +1,32 @@
+<div class="table-container bg-white rounded-lg shadow">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3">Complaint ID</th>
+                    <th class="px-6 py-3">Complaint Date</th>
+                    <th class="px-6 py-3">Subject</th>
+                    <th class="px-6 py-3">Complainant</th>
+                    <th class="px-6 py-3">Resolution Date</th>
+                    <th class="px-6 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="resolvedCasesTableBody">
+                {% for case in resolved_cases %}
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4">{{ case._id }}</td>
+                    <td class="px-6 py-4">{{ case.created_at }}</td>
+                    <td class="px-6 py-4">{{ case.subject }}</td>
+                    <td class="px-6 py-4">{{ case.complainant_name }}</td>
+                    <td class="px-6 py-4">{{ case.resolution_date }}</td>
+                    <td class="px-6 py-4">
+                        <button onclick="viewResolvedCase('{{ case._id }}')" class="text-primary hover:text-primary/80">
+                            View
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div> 

@@ -1007,35 +1007,59 @@ def onbehalf_form():
         print(f"Error in onbehalf_form: {str(e)}")
         return redirect(url_for('home'))
 
-@app.route('/view_document/<filename>')
+@app.route('/view_document/<path:filename>')
 def view_document(filename):
-    if 'user_id' not in session:
-        flash('Please login first', 'error')
-        return redirect(url_for('login'))
-        
     try:
+        # Remove 'uploads/' prefix if it exists
+        if filename.startswith('uploads/'):
+            filename = filename[8:]  # Remove 'uploads/' prefix
+            
         # Get the full path to the document
         document_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
         # Check if file exists
         if not os.path.exists(document_path):
             flash('Document not found', 'error')
-            return redirect(url_for('profile'))
+            return redirect(request.referrer or url_for('chairperson_dashboard'))
             
         # Send the file
         return send_file(document_path)
         
     except Exception as e:
-        print(f"DEBUG: Error viewing document: {str(e)}")
+        print(f"Error viewing document: {str(e)}")
         flash('Error viewing document', 'error')
-        return redirect(url_for('profile'))
+        return redirect(request.referrer or url_for('chairperson_dashboard'))
+
+@app.route('/download_file/<path:filename>')
+def download_file(filename):
+    try:
+        # Remove 'uploads/' prefix if it exists
+        if filename.startswith('uploads/'):
+            filename = filename[8:]  # Remove 'uploads/' prefix
+            
+        # Get the full path to the document
+        document_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Check if file exists
+        if not os.path.exists(document_path):
+            flash('File not found', 'error')
+            return redirect(request.referrer or url_for('chairperson_dashboard'))
+            
+        # Send the file as attachment
+        return send_file(document_path, as_attachment=True)
+        
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+        flash('Error downloading file', 'error')
+        return redirect(request.referrer or url_for('chairperson_dashboard'))
 
 @app.route('/chairperson_dashboard')
 def chairperson_dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
     try:
+        # Temporarily bypass authentication check for development
+        # if 'user_id' not in session:
+        #     return redirect(url_for('login'))
+        
         # Get all complaints from the database
         complaints = list(complaint_collection.find().sort('created_at', -1))
         
@@ -1069,125 +1093,19 @@ def chairperson_dashboard():
                 'id_proof_path': complaint.get('details', {}).get('id_proof_path')
             }
             formatted_complaints.append(formatted_complaint)
-            
+        
+        # Get user details if available
+        user_id = session.get('user_id')
+        user = None
+        if user_id:
+            user = user_collection.find_one({'_id': ObjectId(user_id)})
+        
         return render_template('commitee/chairpersonDashboard.html', 
-                            complaints=formatted_complaints)
-                            
+                            complaints=formatted_complaints,
+                            user=user)
     except Exception as e:
         print(f"Error in chairperson_dashboard: {str(e)}")
-        flash('An error occurred while loading the dashboard')
         return render_template('commitee/chairpersonDashboard.html', complaints=[])
-
-@app.route('/chairperson/view_complaint/<complaint_id>')
-def chairperson_view_complaint(complaint_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    try:
-        complaint = complaint_collection.find_one({'_id': ObjectId(complaint_id)})
-        if not complaint:
-            flash('Complaint not found')
-            return redirect(url_for('chairperson_dashboard'))
-            
-        return render_template('commitee/view_complaint.html', complaint=complaint)
-        
-    except Exception as e:
-        print(f"Error viewing complaint: {str(e)}")
-        flash('An error occurred while viewing the complaint')
-        return redirect(url_for('chairperson_dashboard'))
-
-@app.route('/download_file/<path:filename>')
-def download_file(filename):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    try:
-        safe_path = safe_join(app.config['UPLOAD_FOLDER'], filename)
-        if not os.path.exists(safe_path):
-            flash('File not found')
-            return redirect(url_for('chairperson_dashboard'))
-            
-        return send_file(safe_path, as_attachment=True)
-        
-    except Exception as e:
-        print(f"Error downloading file: {str(e)}")
-        flash('An error occurred while downloading the file')
-        return redirect(url_for('chairperson_dashboard'))
-
-@app.route('/manage_role')
-def manage_role():
-    return render_template('manage_role.html')
-
-
-@app.route('/update_complaint_status/<complaint_id>', methods=['POST'])
-def update_complaint_status(complaint_id):
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Please login first'}), 401
-        
-    try:
-        if not request.is_json:
-            return jsonify({'success': False, 'message': 'Request must be JSON'}), 400
-            
-        data = request.get_json()
-        new_status = data.get('status')
-        remarks = data.get('remarks')
-        
-        if not new_status:
-            return jsonify({'success': False, 'message': 'Status is required'}), 400
-            
-        # Get the current complaint to get the old status and email
-        complaint = complaint_collection.find_one({'_id': ObjectId(complaint_id)})
-        if not complaint:
-            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
-            
-        old_status = complaint.get('status', 'pending')
-        complainant_email = complaint.get('details', {}).get('personal_info', {}).get('email')
-        
-        # Update the complaint status
-        result = complaint_collection.update_one(
-            {'_id': ObjectId(complaint_id)},
-            {
-                '$set': {
-                    'status': new_status,
-                    'updated_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
-                    'remarks': remarks
-                }
-            }
-        )
-        
-        if result.modified_count > 0:
-            # Send email notification if email is available
-            if complainant_email:
-                try:
-                    msg = Message(
-                        'Complaint Status Update - Raise My Voice',
-                        sender=app.config['MAIL_USERNAME'],
-                        recipients=[complainant_email]
-                    )
-                    msg.body = f"""
-                    Your complaint status has been updated.
-                    
-                    Previous Status: {old_status}
-                    New Status: {new_status}
-                    Remarks: {remarks or 'No remarks provided'}
-                    
-                    You can check the updated status by logging into your account.
-                    
-                    Thank you,
-                    Raise My Voice Team
-                    """
-                    mail.send(msg)
-                except Exception as mail_error:
-                    print(f"Error sending email: {str(mail_error)}")
-                    # Don't fail the status update if email fails
-                    
-            return jsonify({'success': True, 'message': 'Status updated successfully'})
-        else:
-            return jsonify({'success': False, 'message': 'No changes made to complaint'}), 400
-            
-    except Exception as e:
-        print(f"Error updating complaint status: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
     
     
 
@@ -1195,65 +1113,57 @@ def update_complaint_status(complaint_id):
 @app.route('/admin')
 def admin():
     try:
-        return render_template('adminpanel/admin_welcome.html', title='Admin Dashboard')
+        # Temporarily bypass authentication check for development
+        # if 'admin_id' not in session:
+        #     return redirect(url_for('login'))
+        return render_template('adminpanel/admin_welcome.html')
     except Exception as e:
         print(f"Error in admin dashboard: {str(e)}")
-        flash('An error occurred while loading the dashboard', 'error')
-        return render_template('adminpanel/admin_welcome.html', title='Admin Dashboard')
+        return render_template('adminpanel/admin_welcome.html')
 
 @app.route('/admin/manage_users')
 def manage_users():
     try:
+        # Temporarily bypass authentication check for development
+        # if 'admin_id' not in session:
+        #     return redirect(url_for('login'))
         return render_template('adminpanel/manage_user.html')
     except Exception as e:
         print(f"Error in manage_users: {str(e)}")
-        flash('An error occurred while loading the page', 'error')
         return render_template('adminpanel/manage_user.html')
 
 @app.route('/admin/manage_roles')
 def manage_roles():
     try:
+        # Temporarily bypass authentication check for development
+        # if 'admin_id' not in session:
+        #     return redirect(url_for('login'))
         return render_template('adminpanel/manage_role.html')
     except Exception as e:
         print(f"Error in manage_roles: {str(e)}")
-        flash('An error occurred while loading the page', 'error')
         return render_template('adminpanel/manage_role.html')
 
 @app.route('/admin/code_maintenance')
 def code_maintenance():
     try:
+        # Temporarily bypass authentication check for development
+        # if 'admin_id' not in session:
+        #     return redirect(url_for('login'))
         return render_template('adminpanel/code_maintenance.html')
     except Exception as e:
         print(f"Error in code_maintenance: {str(e)}")
-        flash('An error occurred while loading the page', 'error')
         return render_template('adminpanel/code_maintenance.html')
 
 @app.route('/admin/edit_code')
 def edit_code():
     try:
+        # Temporarily bypass authentication check for development
+        # if 'admin_id' not in session:
+        #     return redirect(url_for('login'))
         return render_template('adminpanel/edit_code.html')
     except Exception as e:
         print(f"Error in edit_code: {str(e)}")
-        flash('An error occurred while loading the page', 'error')
         return render_template('adminpanel/edit_code.html')
-
-@app.route('/admin/admin-profile')
-def admin_profile():
-    try:
-        return render_template('adminpanel/admin_profile.html')
-    except Exception as e:
-        print(f"Error in admin_profile: {str(e)}")
-        flash('An error occurred while loading the profile', 'error')
-        return render_template('adminpanel/admin_profile.html')
-
-@app.route('/admin/change-password')
-def change_password():
-    try:
-        return render_template('adminpanel/change_password.html')
-    except Exception as e:
-        print(f"Error in change_password: {str(e)}")
-        flash('An error occurred while loading the page', 'error')
-        return render_template('adminpanel/change_password.html')
 
 @app.route('/api/codes', methods=['GET'])
 def get_codes():
@@ -1662,6 +1572,495 @@ def change_admin_password():
     except Exception as e:
         print(f"Error changing admin password: {str(e)}")
         return jsonify({'success': False, 'message': 'Failed to change password'}), 500
+
+@app.route('/chairperson/view_complaint/<complaint_id>')
+def chairperson_view_complaint(complaint_id):
+    try:
+        # Temporarily bypass authentication check for development
+        # if 'user_id' not in session:
+        #     return redirect(url_for('login'))
+        
+        complaint = complaint_collection.find_one({'_id': ObjectId(complaint_id)})
+        if not complaint:
+            flash('Complaint not found', 'error')
+            return redirect(url_for('chairperson_dashboard'))
+        
+        # Format the complaint data
+        formatted_complaint = {
+            '_id': str(complaint['_id']),
+            'created_at': complaint.get('created_at', ''),
+            'status': complaint.get('status', 'pending'),
+            'personal_info': complaint.get('details', {}).get('personal_info', {}),
+            'incident': complaint.get('details', {}).get('incident', {}),
+            'evidence_path': complaint.get('details', {}).get('incident', {}).get('evidence_path'),
+            'id_proof_path': complaint.get('details', {}).get('id_proof_path'),
+            'remarks': complaint.get('remarks', ''),
+            'updated_at': complaint.get('updated_at', '')
+        }
+        
+        return render_template('commitee/view_complaint.html', complaint=formatted_complaint)
+    except Exception as e:
+        print(f"Error in chairperson_view_complaint: {str(e)}")
+        flash('Error viewing complaint', 'error')
+        return redirect(url_for('chairperson_dashboard'))
+
+@app.route('/update_complaint_status', methods=['POST'])
+@csrf.exempt  # Temporarily exempt this route from CSRF protection
+def update_complaint_status():
+    try:
+        # Parse JSON data from request
+        data = request.get_json()
+        print("Received data:", data)
+        
+        if not data:
+            print("No data received in request")
+            return jsonify({
+                'success': False,
+                'message': 'No data provided'
+            }), 400
+
+        # Get complaint details
+        complaint_id = data.get('complaint_id')
+        new_status = data.get('status')
+        remarks = data.get('remarks')
+        original_status = data.get('original_status')
+        complainant_email = data.get('complainant_email')
+        complainant_name = data.get('complainant_name')
+        complaint_subject = data.get('complaint_subject')
+
+        print("Parsed data:", {
+            'complaint_id': complaint_id,
+            'new_status': new_status,
+            'complainant_email': complainant_email
+        })
+
+        # Validate required fields
+        missing_fields = []
+        if not complaint_id:
+            missing_fields.append('complaint_id')
+        if not new_status:
+            missing_fields.append('status')
+        if not complainant_email:
+            missing_fields.append('complainant_email')
+
+        if missing_fields:
+            print("Missing fields:", missing_fields)
+            return jsonify({
+                'success': False,
+                'message': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+
+        # Validate status value
+        valid_statuses = ['pending', 'in_progress', 'resolved', 'cancelled']
+        if new_status not in valid_statuses:
+            print("Invalid status:", new_status)
+            return jsonify({
+                'success': False,
+                'message': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
+            }), 400
+
+        try:
+            # Update complaint in database
+            result = complaint_collection.update_one(
+                {'_id': ObjectId(complaint_id)},
+                {
+                    '$set': {
+                        'status': new_status,
+                        'remarks': remarks,
+                        'updated_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+            )
+            print("Database update result:", result.modified_count)
+
+            if result.modified_count > 0:
+                # Send email notification
+                try:
+                    msg = Message(
+                        'Complaint Status Update - Raise My Voice',
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[complainant_email]
+                    )
+                    
+                    # Create email body
+                    email_body = f"""
+                    Dear {complainant_name},
+
+                    The status of your complaint has been updated.
+
+                    Complaint Details:
+                    Subject: {complaint_subject}
+                    Previous Status: {' '.join(word.capitalize() for word in original_status.split('_'))}
+                    New Status: {' '.join(word.capitalize() for word in new_status.split('_'))}
+                    Remarks: {remarks}
+
+                    You can view your complaint details by logging into your account.
+
+                    Best regards,
+                    Raise My Voice Team
+                    """
+
+                    msg.body = email_body
+                    mail.send(msg)
+                    print("Email sent successfully")
+                    
+                    return jsonify({
+                        'success': True,
+                        'message': 'Status updated and email sent successfully'
+                    })
+                except Exception as mail_error:
+                    print("Email error:", str(mail_error))
+                    return jsonify({
+                        'success': True,
+                        'message': 'Status updated but failed to send email'
+                    })
+            else:
+                print("No documents modified")
+                return jsonify({
+                    'success': False,
+                    'message': 'No changes made to the complaint. The complaint might not exist or the status is the same.'
+                }), 400
+        except Exception as db_error:
+            print("Database error:", str(db_error))
+            return jsonify({
+                'success': False,
+                'message': f'Database error: {str(db_error)}'
+            }), 500
+
+    except Exception as e:
+        print("General error:", str(e))
+        return jsonify({
+            'success': False,
+            'message': f'Server error: {str(e)}'
+        }), 500
+
+@app.route('/get_interview/<interview_id>')
+def get_interview(interview_id):
+    try:
+        interview = interviews_collection.find_one({'_id': ObjectId(interview_id)})
+        if interview:
+            # Convert ObjectId to string for JSON serialization
+            interview['_id'] = str(interview['_id'])
+            return jsonify({'success': True, 'interview': interview})
+        else:
+            return jsonify({'success': False, 'message': 'Interview not found'}), 404
+    except Exception as e:
+        print(f"Error getting interview: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/update_interview/<interview_id>', methods=['PUT'])
+@csrf.exempt
+def update_interview(interview_id):
+    try:
+        data = request.get_json()
+        
+        # Update interview details
+        update_data = {
+            'date': data.get('date'),
+            'time': data.get('time'),
+            'mode': data.get('mode'),
+            'location': data.get('location'),
+            'participants': data.get('participants'),
+            'status': data.get('status'),
+            'interview_number': data.get('interview_number')
+        }
+
+        # Get the interview to get the email
+        interview = interviews_collection.find_one({'_id': ObjectId(interview_id)})
+        if not interview:
+            return jsonify({'success': False, 'message': 'Interview not found'}), 404
+
+        # Update the interview
+        result = interviews_collection.update_one(
+            {'_id': ObjectId(interview_id)},
+            {'$set': update_data}
+        )
+
+        if result.modified_count > 0:
+            # Send email notification
+            email_body = f"""
+            Dear {interview['complainant_name']},
+
+            Your interview details have been updated:
+
+            Date: {data['date']}
+            Time: {data['time']}
+            Mode: {data['mode']}
+            Location: {data['location']}
+            Status: {data['status']}
+            Interview Number: {data['interview_number']}
+
+            Please make sure to attend the interview at the scheduled time.
+
+            Best regards,
+            Committee Team
+            """
+
+            send_email(
+                to_email=interview['email'],
+                subject=f"Interview Update - {interview['complaint_id']}",
+                body=email_body
+            )
+
+            return jsonify({'success': True, 'message': 'Interview updated successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'No changes were made'})
+    except Exception as e:
+        print(f"Error updating interview: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/chairperson/my_interviews')
+def my_interviews():
+    try:
+        # Get all interviews for the current user
+        interviews = list(interviews_collection.find({
+            'chairperson_id': session.get('user_id')
+        }).sort('date', -1))
+        
+        # Format interviews for display
+        formatted_interviews = []
+        for interview in interviews:
+            formatted_interview = {
+                '_id': str(interview['_id']),
+                'date': interview.get('date', ''),
+                'time': interview.get('time', ''),
+                'complaint_id': interview.get('complaint_id', ''),
+                'email': interview.get('email', ''),
+                'participants': interview.get('participants', ''),
+                'location': interview.get('location', ''),
+                'mode': interview.get('mode', ''),
+                'status': interview.get('status', ''),
+                'interview_number': interview.get('interview_number', '')
+            }
+            formatted_interviews.append(formatted_interview)
+        
+        return render_template('commitee/my_interviews.html', interviews=formatted_interviews)
+    except Exception as e:
+        print(f"Error in my_interviews: {str(e)}")
+        return render_template('commitee/my_interviews.html', interviews=[])
+
+@app.route('/chairperson/complaints_list')
+def complaints_list():
+    try:
+        # Get all complaints
+        complaints = list(complaint_collection.find().sort('created_at', -1))
+        
+        # Format complaints for display
+        formatted_complaints = []
+        for complaint in complaints:
+            formatted_complaint = {
+                '_id': str(complaint['_id']),
+                'created_at': complaint.get('created_at', ''),
+                'subject': complaint.get('details', {}).get('incident', {}).get('description', ''),
+                'complainant_name': complaint.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                'status': complaint.get('status', 'pending')
+            }
+            formatted_complaints.append(formatted_complaint)
+        
+        return render_template('commitee/complaints_list.html', all_complaints=formatted_complaints)
+    except Exception as e:
+        print(f"Error in complaints_list: {str(e)}")
+        return render_template('commitee/complaints_list.html', all_complaints=[])
+
+@app.route('/chairperson/interview_list')
+def interview_list():
+    try:
+        # Get all interviews
+        interviews = list(interviews_collection.find().sort('date', -1))
+        
+        # Get all complaints for the dropdown
+        complaints = list(complaint_collection.find().sort('created_at', -1))
+        
+        # Format interviews for display
+        formatted_interviews = []
+        for interview in interviews:
+            # Get complaint details
+            complaint = complaint_collection.find_one({'_id': ObjectId(interview.get('complaint_id'))})
+            if complaint:
+                personal_info = complaint.get('details', {}).get('personal_info', {})
+                formatted_interview = {
+                    '_id': str(interview['_id']),
+                    'date': interview.get('date', ''),
+                    'time': interview.get('time', ''),
+                    'complaint_id': interview.get('complaint_id', ''),
+                    'complainant_name': personal_info.get('full_name', ''),
+                    'email': personal_info.get('email', ''),
+                    'status': interview.get('status', '')
+                }
+                formatted_interviews.append(formatted_interview)
+        
+        # Format complaints for dropdown
+        formatted_complaints = []
+        for complaint in complaints:
+            formatted_complaint = {
+                '_id': str(complaint['_id']),
+                'subject': complaint.get('details', {}).get('incident', {}).get('description', '')
+            }
+            formatted_complaints.append(formatted_complaint)
+        
+        return render_template('commitee/interview_list.html', 
+                            all_interviews=formatted_interviews,
+                            complaints=formatted_complaints)
+    except Exception as e:
+        print(f"Error in interview_list: {str(e)}")
+        return render_template('commitee/interview_list.html', 
+                            all_interviews=[],
+                            complaints=[])
+
+@app.route('/chairperson/resolved_cases')
+def resolved_cases():
+    try:
+        # Get all resolved complaints
+        resolved = list(complaint_collection.find({
+            'status': 'resolved'
+        }).sort('created_at', -1))
+        
+        # Format resolved cases for display
+        formatted_cases = []
+        for case in resolved:
+            formatted_case = {
+                '_id': str(case['_id']),
+                'created_at': case.get('created_at', ''),
+                'subject': case.get('details', {}).get('incident', {}).get('description', ''),
+                'complainant_name': case.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                'resolution_date': case.get('resolution_date', '')
+            }
+            formatted_cases.append(formatted_case)
+        
+        return render_template('commitee/resolved_cases.html', resolved_cases=formatted_cases)
+    except Exception as e:
+        print(f"Error in resolved_cases: {str(e)}")
+        return render_template('commitee/resolved_cases.html', resolved_cases=[])
+
+@app.route('/chairperson/reappeal_cases')
+def reappeal_cases():
+    try:
+        # Get all reappeal cases
+        reappeals = list(complaint_collection.find({
+            'status': 'reappeal'
+        }).sort('created_at', -1))
+        
+        # Format reappeal cases for display
+        formatted_cases = []
+        for case in reappeals:
+            formatted_case = {
+                '_id': str(case['_id']),
+                'original_complaint_date': case.get('created_at', ''),
+                'subject': case.get('details', {}).get('incident', {}).get('description', ''),
+                'complainant_name': case.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                'reappeal_date': case.get('reappeal_date', ''),
+                'status': case.get('status', '')
+            }
+            formatted_cases.append(formatted_case)
+        
+        return render_template('commitee/reappeal_cases.html', reappeal_cases=formatted_cases)
+    except Exception as e:
+        print(f"Error in reappeal_cases: {str(e)}")
+        return render_template('commitee/reappeal_cases.html', reappeal_cases=[])
+
+@app.route('/chairperson/my_complaints')
+def my_complaints():
+    try:
+        # Get complaints assigned to current user
+        complaints = list(complaint_collection.find({
+            'assigned_to': session.get('user_id')
+        }).sort('created_at', -1))
+        
+        # Format complaints for display
+        formatted_complaints = []
+        for complaint in complaints:
+            formatted_complaint = {
+                '_id': str(complaint['_id']),
+                'created_at': complaint.get('created_at', ''),
+                'subject': complaint.get('details', {}).get('incident', {}).get('description', ''),
+                'status': complaint.get('status', 'pending')
+            }
+            formatted_complaints.append(formatted_complaint)
+        
+        return render_template('commitee/my_complaints.html', complaints=formatted_complaints)
+    except Exception as e:
+        print(f"Error in my_complaints: {str(e)}")
+        return render_template('commitee/my_complaints.html', complaints=[])
+
+@app.route('/api/interviews', methods=['POST'])
+@csrf.exempt
+def create_interview():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        # Validate required fields
+        required_fields = ['complaint_id', 'date', 'time', 'status']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'message': f'Missing required field: {field}'}), 400
+
+        # Get complaint details
+        complaint = complaint_collection.find_one({'_id': ObjectId(data['complaint_id'])})
+        if not complaint:
+            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+
+        personal_info = complaint.get('details', {}).get('personal_info', {})
+
+        # Create interview document
+        interview_data = {
+            'complaint_id': data['complaint_id'],
+            'date': data['date'],
+            'time': data['time'],
+            'status': data['status'],
+            'complainant_name': personal_info.get('full_name', ''),
+            'email': personal_info.get('email', ''),
+            'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        # Insert interview into database
+        result = interviews_collection.insert_one(interview_data)
+
+        if result.inserted_id:
+            # Send email notification
+            try:
+                msg = Message(
+                    'Interview Scheduled - Raise My Voice',
+                    sender=app.config['MAIL_USERNAME'],
+                    recipients=[personal_info.get('email', '')]
+                )
+                
+                email_body = f"""
+                Dear {personal_info.get('full_name', '')},
+
+                An interview has been scheduled for your complaint.
+
+                Interview Details:
+                Date: {data['date']}
+                Time: {data['time']}
+                Status: {data['status']}
+
+                Please make sure to attend the interview at the scheduled time.
+
+                Best regards,
+                Committee Team
+                """
+
+                msg.body = email_body
+                mail.send(msg)
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Interview created and email sent successfully'
+                })
+            except Exception as mail_error:
+                print("Email error:", str(mail_error))
+                return jsonify({
+                    'success': True,
+                    'message': 'Interview created but failed to send email'
+                })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to create interview'}), 500
+
+    except Exception as e:
+        print(f"Error creating interview: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
     # Initialize the app

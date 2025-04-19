@@ -1,0 +1,40 @@
+<div class="table-container bg-white rounded-lg shadow">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3">Complaint ID</th>
+                    <th class="px-6 py-3">Complaint Date</th>
+                    <th class="px-6 py-3">Subject</th>
+                    <th class="px-6 py-3">Status</th>
+                    <th class="px-6 py-3">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="complaintsTableBody">
+                {% for complaint in complaints %}
+                <tr class="bg-white border-b hover:bg-gray-50">
+                    <td class="px-6 py-4">{{ complaint._id }}</td>
+                    <td class="px-6 py-4">{{ complaint.created_at }}</td>
+                    <td class="px-6 py-4">{{ complaint.subject }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full 
+              {% if complaint.status == 'pending' %}bg-yellow-100 text-yellow-800
+              {% elif complaint.status == 'in_progress' %}bg-blue-100 text-blue-800
+              {% elif complaint.status == 'resolved' %}bg-green-100 text-green-800
+              {% elif complaint.status == 'cancelled' %}bg-red-100 text-red-800
+              {% endif %}">
+                            {{ complaint.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <button onclick="viewComplaint('{{ complaint._id }}')"
+                            class="text-primary hover:text-primary/80">
+                            View
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
