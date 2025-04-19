@@ -1,0 +1,62 @@
+<aside id="sidebar"
+    class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform bg-white border-r border-gray-200">
+    <div class="flex flex-col h-full">
+        <div class="p-4 border-b">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="navigateToProfile()">
+                <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                    <i class="ri-user-line text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-900">Dr. Emily Thompson</h3>
+                    <p class="text-sm text-gray-500">Committee Chairperson</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <div class="flex flex-col space-y-2">
+                <a href="{{ url_for('chairperson_dashboard') }}"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                    <i class="ri-dashboard-line text-xl"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('my_interviews') }}"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                    <i class="ri-calendar-check-line text-xl"></i>
+                    <span>My Interviews</span>
+                </a>
+                <a href="{{ url_for('complaints_list') }}"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                    <i class="ri-file-list-3-line text-xl"></i>
+                    <span>Complaints List</span>
+                </a>
+                <a href="/chairperson/resolved_cases"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                    <i class="ri-check-double-line text-xl"></i>
+                    <span>Resolved Cases</span>
+                </a>
+                <a href="/chairperson/reappeal_cases"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                    <i class="ri-refresh-line text-xl"></i>
+                    <span>Reappeal Cases</span>
+                </a>
+                <a href="{{ url_for('track_my_complaints') }}"
+                    class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                    <i class="ri-folder-user-line text-xl"></i>
+                    <span>My Complaints</span>
+                </a>
+            </div>
+        </nav>
+        <div class="p-4 space-y-3">
+            <button onclick="showAddComplaintModal()"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-button">
+                <i class="ri-add-circle-line text-xl"></i>
+                Add New Complaint
+            </button>
+            <button onclick="showScheduleInterviewModal()"
+                class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-button">
+                <i class="ri-calendar-event-line text-xl"></i>
+                Schedule Interview
+            </button>
+        </div>
+    </div>
+</aside>

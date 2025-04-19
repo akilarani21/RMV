@@ -101,6 +101,7 @@ nodal_collection = db['nodal_officers']
 code_collection = db['codes']
 role_collection = db['roles']  # Add roles collection
 admin_user_collection = db['admin_users']  # Add admin users collection
+interviews_collection = db['interviews']  # Add interviews collection
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'  
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -773,13 +774,22 @@ def track_my_complaints():
         for complaint in complaints:
             if complaint:  # Check if complaint exists
                 try:
+                    # Extract subject from details if it exists
+                    subject = "N/A"
+                    if 'details' in complaint and 'incident' in complaint['details']:
+                        subject = complaint['details']['incident'].get('description', 'N/A')[:100] + '...'
+                    elif 'submission' in complaint:
+                        subject = complaint['submission'].get('description', 'N/A')[:100] + '...'
+
                     formatted_complaint = {
                         '_id': str(complaint['_id']),
-                        'name': complaint.get('name', 'No Name'),
+                        'name': complaint.get('name', user.get('name', 'No Name')),
                         'email': complaint.get('email', ''),
                         'status': complaint.get('status', 'Registered'),
-                        'registered_at': complaint.get('registered_at', ''),
-                        'submission': complaint.get('submission', {})
+                        'created_at': complaint.get('created_at', complaint.get('registered_at', '')),
+                        'subject': subject,
+                        'submission': complaint.get('submission', {}),
+                        'details': complaint.get('details', {})
                     }
 
                     # Add resolved info if available
@@ -791,7 +801,7 @@ def track_my_complaints():
                     print(f"Error formatting complaint: {str(e)}")
                     continue
 
-        return render_template('my_complaints.html',
+        return render_template('commitee/my_complaints.html',
                             complaints=formatted_complaints,
                             user=user,
                             user_name=session.get('name', 'User'))
@@ -799,7 +809,7 @@ def track_my_complaints():
     except Exception as e:
         print(f"Error in track_my_complaints: {str(e)}")
         flash('An error occurred while fetching your complaints')
-        return render_template('my_complaints.html',
+        return render_template('commitee/my_complaints.html',
                             complaints=[],
                             error="Failed to load complaints. Please try again.")
 
@@ -1848,13 +1858,28 @@ def complaints_list():
         # Format complaints for display
         formatted_complaints = []
         for complaint in complaints:
+            # Get interview details for this complaint
+            interview = interviews_collection.find_one({'complaint_id': str(complaint['_id'])})
+            
             formatted_complaint = {
                 '_id': str(complaint['_id']),
                 'created_at': complaint.get('created_at', ''),
                 'subject': complaint.get('details', {}).get('incident', {}).get('description', ''),
                 'complainant_name': complaint.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                'complainant_email': complaint.get('details', {}).get('personal_info', {}).get('email', ''),
                 'status': complaint.get('status', 'pending')
             }
+            
+            # Add interview details if available
+            if interview:
+                formatted_complaint['interview_date'] = interview.get('date', '')
+                formatted_complaint['interview_time'] = interview.get('time', '')
+                formatted_complaint['interview_mode'] = interview.get('mode', '')
+                formatted_complaint['interview_location'] = interview.get('location', '')
+                formatted_complaint['interview_participants'] = interview.get('participants', '')
+                formatted_complaint['interview_status'] = interview.get('status', '')
+                formatted_complaint['interview_number'] = interview.get('interview_number', '')
+            
             formatted_complaints.append(formatted_complaint)
         
         return render_template('commitee/complaints_list.html', all_complaints=formatted_complaints)
@@ -2060,6 +2085,114 @@ def create_interview():
 
     except Exception as e:
         print(f"Error creating interview: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/chairperson/schedule_interview')
+def schedule_interview():
+    try:
+        # Get all complaints for the dropdown
+        complaints = list(complaint_collection.find().sort('created_at', -1))
+        
+        # Format complaints for dropdown
+        formatted_complaints = []
+        for complaint in complaints:
+            personal_info = complaint.get('details', {}).get('personal_info', {})
+            formatted_complaint = {
+                '_id': str(complaint['_id']),
+                'complainant_email': personal_info.get('email', ''),
+                'subject': complaint.get('details', {}).get('incident', {}).get('description', '')
+            }
+            formatted_complaints.append(formatted_complaint)
+        
+        return render_template('commitee/schedule_interview.html', complaints=formatted_complaints)
+    except Exception as e:
+        print(f"Error in schedule_interview: {str(e)}")
+        flash('Error loading schedule interview form', 'error')
+        return redirect(url_for('chairperson_dashboard'))
+
+@app.route('/schedule_interview', methods=['POST'])
+@csrf.exempt
+def create_schedule_interview():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        # Validate required fields
+        required_fields = ['complaint_id', 'email', 'date', 'time', 'mode', 'location', 'participants', 'status', 'interview_number']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'success': False, 'message': f'Missing required field: {field}'}), 400
+
+        # Get complaint details
+        complaint = complaint_collection.find_one({'_id': ObjectId(data['complaint_id'])})
+        if not complaint:
+            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+
+        personal_info = complaint.get('details', {}).get('personal_info', {})
+
+        # Create interview document
+        interview_data = {
+            'complaint_id': data['complaint_id'],
+            'email': data['email'],
+            'date': data['date'],
+            'time': data['time'],
+            'mode': data['mode'],
+            'location': data['location'],
+            'participants': data['participants'],
+            'status': data['status'],
+            'interview_number': data['interview_number'],
+            'chairperson_id': session.get('user_id'),
+            'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+        }
+
+        # Insert interview into database
+        result = interviews_collection.insert_one(interview_data)
+
+        if result.inserted_id:
+            # Send email notification
+            try:
+                email_body = f"""
+                Dear {personal_info.get('full_name', '')},
+
+                An interview has been scheduled for your complaint.
+
+                Interview Details:
+                Date: {data['date']}
+                Time: {data['time']}
+                Mode: {data['mode']}
+                Location: {data['location']}
+                Participants: {data['participants']}
+                Status: {data['status']}
+                Interview Number: {data['interview_number']}
+
+                Please make sure to attend the interview at the scheduled time.
+
+                Best regards,
+                Committee Team
+                """
+
+                send_email(
+                    to_email=data['email'],
+                    subject=f"Interview Scheduled - {data['complaint_id']}",
+                    body=email_body
+                )
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Interview scheduled and email sent successfully'
+                })
+            except Exception as mail_error:
+                print("Email error:", str(mail_error))
+                return jsonify({
+                    'success': True,
+                    'message': 'Interview scheduled but failed to send email'
+                })
+        else:
+            return jsonify({'success': False, 'message': 'Failed to schedule interview'}), 500
+
+    except Exception as e:
+        print(f"Error scheduling interview: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':

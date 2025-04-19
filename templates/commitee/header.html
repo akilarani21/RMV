@@ -1,0 +1,30 @@
+<header class="bg-white border-b border-gray-200">
+    <div class="px-6 py-4">
+        <div class="flex items-center justify-between">
+            <h1 id="pageTitle" class="text-xl font-semibold text-gray-900">{{ page_title|default('Committee Dashboard')
+                }}</h1>
+            <button id="menuButton" class="md:hidden" onclick="toggleSidebar()">
+                <i class="ri-menu-line text-xl"></i>
+            </button>
+        </div>
+        {% if show_filters %}
+        <nav id="filtersNav" class="overflow-x-auto -mb-px">
+            <div class="flex gap-2 min-w-max p-1">
+                <button
+                    class="status-filter active px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap">All</button>
+                <button
+                    class="status-filter px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full whitespace-nowrap">Scheduled</button>
+                <button
+                    class="status-filter px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full whitespace-nowrap">In
+                    Progress</button>
+                <button
+                    class="status-filter px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full whitespace-nowrap">Completed</button>
+                <button
+                    class="status-filter px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full whitespace-nowrap">Resolved</button>
+                <button
+                    class="status-filter px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-full whitespace-nowrap">Cancelled</button>
+            </div>
+        </nav>
+        {% endif %}
+    </div>
+</header>

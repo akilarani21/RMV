@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Interview - Committee Dashboard</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#6B7280'
+                    },
+                    borderRadius: {
+                        'none': '0px',
+                        'sm': '4px',
+                        DEFAULT: '8px',
+                        'md': '12px',
+                        'lg': '16px',
+                        'xl': '20px',
+                        '2xl': '24px',
+                        '3xl': '32px',
+                        'full': '9999px',
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :where([class^="ri-"])::before {
+            content: "\f3c2";
+        }
+
+        .sidebar-link.active {
+            background-color: rgba(79, 70, 229, 0.1);
+            color: #4F46E5;
+        }
+
+        .status-filter.active {
+            background-color: #4F46E5;
+            color: white;
+        }
+
+        /* Responsive table styles */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        .table-container table {
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        /* Responsive filters */
+        .filters-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 0.5rem;
+            margin-bottom: -0.5rem;
+        }
+
+        .filters-container {
+            display: flex;
+            gap: 0.5rem;
+            min-width: max-content;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+                transition: transform 0.3s ease-in-out;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+            }
+
+            .table-container {
+                margin: 0 -1rem;
+                border-radius: 0;
+            }
+
+            .pagination-container {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch !important;
+            }
+
+            .pagination-container>div {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 font-['Inter']">
+    <div class="flex min-h-screen">
+        <aside id="sidebar"
+            class="fixed top-0 left-0 z-40 w-64 h-screen transition-transform bg-white border-r border-gray-200">
+            <div class="flex flex-col h-full">
+                <div class="p-4 border-b">
+                    <div class="flex items-center gap-3 cursor-pointer" onclick="navigateToProfile()">
+                        <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                            <i class="ri-user-line text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Dr. Emily Thompson</h3>
+                            <p class="text-sm text-gray-500">Committee Chairperson</p>
+                        </div>
+                    </div>
+                </div>
+                <nav class="flex-1 p-4 space-y-2">
+                    <div class="flex flex-col space-y-2">
+                        <a href="{{ url_for('chairperson_dashboard') }}"
+                            class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <i class="ri-home-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                        <a href="{{ url_for('my_interviews') }}"
+                            class="flex items-center space-x-2 text-primary sidebar-link active">
+                            <i class="ri-calendar-2-line"></i>
+                            <span>My Interviews</span>
+                        </a>
+                        <a href="{{ url_for('complaints_list') }}"
+                            class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <i class="ri-list-check"></i>
+                            <span>Complaints List</span>
+                        </a>
+                        <a href="/chairperson/interview_list"
+                            class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <i class="ri-clipboard-list-line"></i>
+                            <span>Interview List</span>
+                        </a>
+                        <a href="/chairperson/resolved_cases"
+                            class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <i class="ri-check-double-line"></i>
+                            <span>Resolved Cases</span>
+                        </a>
+                        <a href="/chairperson/reappeal_cases"
+                            class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <i class="ri-refresh-line"></i>
+                            <span>Reappeal Cases</span>
+                        </a>
+                        <a href="{{ url_for('track_my_complaints') }}"
+                            class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <i class="ri-file-list-line"></i>
+                            <span>My Complaints</span>
+                        </a>
+                    </div>
+                </nav>
+                <div class="p-4 space-y-3">
+                    <button onclick="showAddComplaintModal()"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-button">
+                        <i class="ri-add-line w-5 h-5 flex items-center justify-center"></i>
+                        Add New Complaint
+                    </button>
+                    <button onclick="showScheduleInterviewModal()"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-button">
+                        <i class="ri-calendar-2-line w-5 h-5 flex items-center justify-center"></i>
+                        Schedule Interview
+                    </button>
+                </div>
+            </div>
+        </aside>
+        <div class="flex-1 ml-64 main-content">
+            <header class="bg-white border-b border-gray-200">
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h1 id="pageTitle" class="text-xl font-semibold text-gray-900">Schedule Interview</h1>
+                        <button id="menuButton" class="md:hidden" onclick="toggleSidebar()">
+                            <i class="ri-menu-line text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <main class="p-6">
+                <div class="max-w-3xl mx-auto">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <form id="scheduleInterviewForm" class="space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Complaint ID Dropdown -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Complaint ID</label>
+                                    <select id="complaintId" name="complaint_id" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary"
+                                        onchange="updateEmail()">
+                                        <option value="">Select Complaint ID</option>
+                                        {% for complaint in complaints %}
+                                        <option value="{{ complaint._id }}"
+                                            data-email="{{ complaint.complainant_email }}">
+                                            {{ complaint._id }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <!-- Email (Auto-filled) -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                    <input type="email" id="email" name="email" readonly
+                                        class="w-full rounded-xl border-gray-200 bg-gray-50 shadow-sm">
+                                </div>
+
+                                <!-- Date -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                                    <input type="date" id="date" name="date" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                </div>
+
+                                <!-- Time -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                                    <input type="time" id="time" name="time" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                </div>
+
+                                <!-- Mode -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Mode</label>
+                                    <select id="mode" name="mode" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                        <option value="online">Online</option>
+                                        <option value="offline">Offline</option>
+                                    </select>
+                                </div>
+
+                                <!-- Location -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                                    <input type="text" id="location" name="location" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                </div>
+
+                                <!-- Participants -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Participants</label>
+                                    <input type="text" id="participants" name="participants" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                </div>
+
+                                <!-- Status -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                    <input type="text" id="status" name="status" value="Scheduled" readonly
+                                        class="w-full rounded-xl border-gray-200 bg-gray-50 shadow-sm">
+                                </div>
+
+                                <!-- Interview Number -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Interview Number</label>
+                                    <select id="interviewNumber" name="interview_number" required
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                        <option value="1">Interview 1</option>
+                                        <option value="2">Interview 2</option>
+                                        <option value="3">Interview 3</option>
+                                        <option value="4">Interview 4</option>
+                                        <option value="5">Interview 5</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end space-x-4 mt-8">
+                                <button type="button" onclick="window.location.href='/chairperson/my_interviews'"
+                                    class="px-6 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all duration-300">
+                                    Cancel
+                                </button>
+                                <button type="submit"
+                                    class="px-6 py-3 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('show');
+        }
+
+        function navigateToProfile() {
+            window.location.href = '/chairperson/profile';
+        }
+
+        function showAddComplaintModal() {
+            window.location.href = '/chairperson/add_complaint';
+        }
+
+        function showScheduleInterviewModal() {
+            window.location.href = '/chairperson/schedule_interview';
+        }
+
+        function updateEmail() {
+            const complaintSelect = document.getElementById('complaintId');
+            const emailInput = document.getElementById('email');
+            const selectedOption = complaintSelect.options[complaintSelect.selectedIndex];
+
+            if (selectedOption.value) {
+                emailInput.value = selectedOption.getAttribute('data-email');
+            } else {
+                emailInput.value = '';
+            }
+        }
+
+        document.getElementById('scheduleInterviewForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const formData = {
+                complaint_id: document.getElementById('complaintId').value,
+                email: document.getElementById('email').value,
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value,
+                mode: document.getElementById('mode').value,
+                location: document.getElementById('location').value,
+                participants: document.getElementById('participants').value,
+                status: document.getElementById('status').value,
+                interview_number: document.getElementById('interviewNumber').value
+            };
+
+            fetch('/schedule_interview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(formData)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Interview scheduled successfully');
+                        window.location.href = '/chairperson/my_interviews';
+                    } else {
+                        alert('Failed to schedule interview: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while scheduling the interview');
+                });
+        });
+    </script>
+</body>
+
+</html>

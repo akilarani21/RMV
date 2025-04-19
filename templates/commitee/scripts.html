@@ -1,0 +1,36 @@
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('show');
+    }
+
+    function navigateToProfile() {
+        window.location.href = '/chairperson/profile';
+    }
+
+    function showAddComplaintModal() {
+        window.location.href = '/chairperson/add_complaint';
+    }
+
+    function showScheduleInterviewModal() {
+        window.location.href = '/chairperson/schedule_interview';
+    }
+
+    function viewComplaint(complaintId) {
+        window.location.href = `/chairperson/view_complaint/${complaintId}`;
+    }
+
+    // Add event listeners for status filters
+    document.addEventListener('DOMContentLoaded', function () {
+        const statusFilters = document.querySelectorAll('.status-filter');
+        if (statusFilters.length > 0) {
+            statusFilters.forEach(filter => {
+                filter.addEventListener('click', function () {
+                    statusFilters.forEach(f => f.classList.remove('active'));
+                    this.classList.add('active');
+                    // Add filter logic here
+                });
+            });
+        }
+    });
+</script>
