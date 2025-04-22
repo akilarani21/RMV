@@ -104,7 +104,6 @@
                                     <th class="px-6 py-3">Location</th>
                                     <th class="px-6 py-3">Mode</th>
                                     <th class="px-6 py-3">Interview Number</th>
-                                    <th class="px-6 py-3">Interview Status</th>
                                     <th class="px-6 py-3">Status</th>
                                     <th class="px-6 py-3">Actions</th>
                                 </tr>
@@ -115,8 +114,7 @@
                                     data-interview-id="{{ complaint.interview_id }}">
                                     <td class="px-6 py-4">{{ complaint._id }}</td>
                                     <td class="px-6 py-4">{{ complaint.created_at }}</td>
-                                    <td class="px-6 py-4">{{ complaint.email or complaint.complainant_email or 'Not
-                                        provided' }}</td>
+                                    <td class="px-6 py-4">{{ complaint.complainant_email or 'Not provided' }}</td>
                                     <td class="px-6 py-4">{{ complaint.subject }}</td>
                                     <td class="px-6 py-4">
                                         {% if complaint.interview_date and complaint.interview_time %}
@@ -125,28 +123,23 @@
                                         <span class="text-gray-400">Not scheduled</span>
                                         {% endif %}
                                     </td>
-                                    <td class="px-6 py-4 location-cell"
-                                        data-interview-id="{{ complaint.interview_id }}">
-                                        <span class="location-text">
-                                            {% if complaint.location %}
-                                            {{ complaint.location }}
-                                            {% else %}
-                                            <span class="text-gray-400">Not specified</span>
-                                            {% endif %}
-                                        </span>
+                                    <td class="px-6 py-4">
+                                        {% if complaint.interview_location %}
+                                        {{ complaint.interview_location }}
+                                        {% else %}
+                                        <span class="text-gray-400">Not specified</span>
+                                        {% endif %}
                                     </td>
-                                    <td class="px-6 py-4 mode-cell" data-interview-id="{{ complaint.interview_id }}">
-                                        <span class="mode-text">
-                                            {% if complaint.mode %}
-                                            <span class="px-3 py-1.5 text-xs font-medium rounded-lg 
-                                                    {% if complaint.mode == 'online' %}bg-blue-100 text-blue-800
-                                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
-                                                {{ complaint.mode|title }}
-                                            </span>
-                                            {% else %}
-                                            <span class="text-gray-400">Not specified</span>
-                                            {% endif %}
+                                    <td class="px-6 py-4">
+                                        {% if complaint.interview_mode %}
+                                        <span class="px-3 py-1.5 text-xs font-medium rounded-lg 
+                                                {% if complaint.interview_mode == 'online' %}bg-blue-100 text-blue-800
+                                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                            {{ complaint.interview_mode|title }}
                                         </span>
+                                        {% else %}
+                                        <span class="text-gray-400">Not specified</span>
+                                        {% endif %}
                                     </td>
                                     <td class="px-6 py-4">
                                         {% if complaint.interview_number %}
@@ -157,21 +150,6 @@
                                         {% else %}
                                         <span class="text-gray-400">Not scheduled</span>
                                         {% endif %}
-                                    </td>
-                                    <td class="px-6 py-4">
-                                        <select
-                                            class="interview-status-select text-xs rounded-lg border-gray-200 focus:border-primary focus:ring-primary"
-                                            data-complaint-id="{{ complaint._id }}"
-                                            data-interview-id="{{ complaint.interview_id }}">
-                                            <option value="">Select Status</option>
-                                            <option value="scheduled" {% if complaint.interview_status=='scheduled'
-                                                %}selected{% endif %}>Scheduled</option>
-                                            <option value="attended" {% if complaint.interview_status=='attended'
-                                                %}selected{% endif %}>Attended</option>
-                                            <option value="not_attended" {% if
-                                                complaint.interview_status=='not_attended' %}selected{% endif %}>Not
-                                                Attended</option>
-                                        </select>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="px-4 py-1.5 text-xs font-semibold rounded-full 

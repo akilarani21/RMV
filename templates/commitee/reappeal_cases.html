@@ -1,43 +1,189 @@
-<div class="table-container bg-white rounded-lg shadow">
-    <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
-            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3">Complaint ID</th>
-                    <th class="px-6 py-3">Original Complaint Date</th>
-                    <th class="px-6 py-3">Subject</th>
-                    <th class="px-6 py-3">Complainant</th>
-                    <th class="px-6 py-3">Reappeal Date</th>
-                    <th class="px-6 py-3">Status</th>
-                    <th class="px-6 py-3">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="reappealCasesTableBody">
-                {% for case in reappeal_cases %}
-                <tr class="bg-white border-b hover:bg-gray-50">
-                    <td class="px-6 py-4">{{ case._id }}</td>
-                    <td class="px-6 py-4">{{ case.original_complaint_date }}</td>
-                    <td class="px-6 py-4">{{ case.subject }}</td>
-                    <td class="px-6 py-4">{{ case.complainant_name }}</td>
-                    <td class="px-6 py-4">{{ case.reappeal_date }}</td>
-                    <td class="px-6 py-4">
-                        <span class="px-2 py-1 text-xs font-medium rounded-full 
-                            {% if case.status == 'pending' %}bg-yellow-100 text-yellow-800
-                            {% elif case.status == 'in_progress' %}bg-blue-100 text-blue-800
-                            {% elif case.status == 'resolved' %}bg-green-100 text-green-800
-                            {% elif case.status == 'cancelled' %}bg-red-100 text-red-800
-                            {% endif %}">
-                            {{ case.status }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4">
-                        <button onclick="viewReappealCase('{{ case._id }}')" class="text-primary hover:text-primary/80">
-                            View
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reappeal Cases - Committee Dashboard</title>
+    {% include 'commitee/styles.html' %}
+</head>
+
+<body class="bg-gray-50 font-['Inter']">
+    <div class="flex min-h-screen">
+        {% include 'commitee/sidebar.html' %}
+
+        <div class="flex-1 ml-64 main-content">
+            <header class="bg-white border-b border-gray-200">
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h1 id="pageTitle" class="text-xl font-semibold text-gray-900 flex items-center">
+                            <i class="ri-refresh-line mr-2 text-primary"></i>
+                            Reappeal Cases
+                        </h1>
+                        <button id="menuButton" class="md:hidden" onclick="toggleSidebar()">
+                            <i class="ri-menu-line text-xl"></i>
                         </button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </header>
+            <main class="p-6">
+                <!-- Filters Section -->
+                <div class="mb-6">
+                    <div class="bg-white rounded-lg shadow p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Date Range Filter -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                    <i class="ri-calendar-line mr-1 text-gray-500"></i>
+                                    Date Range
+                                </label>
+                                <div class="flex space-x-2">
+                                    <input type="date" id="startDate"
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                    <input type="date" id="endDate"
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary">
+                                </div>
+                            </div>
+
+                            <!-- Search Filter -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                                    <i class="ri-search-line mr-1 text-gray-500"></i>
+                                    Search
+                                </label>
+                                <div class="relative">
+                                    <input type="text" id="searchInput" placeholder="Search by ID, name, or subject"
+                                        class="w-full rounded-xl border-gray-200 shadow-sm focus:border-primary focus:ring-primary pl-10">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <i class="ri-search-line text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end mt-4">
+                            <button id="applyFilters"
+                                class="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-xl transition-all duration-300 flex items-center">
+                                <i class="ri-filter-3-fill mr-1"></i>
+                                Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Section -->
+                <div class="table-container bg-white rounded-lg shadow">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3">Complaint ID</th>
+                                    <th class="px-6 py-3">Original Complaint Date</th>
+                                    <th class="px-6 py-3">Subject</th>
+                                    <th class="px-6 py-3">Complainant</th>
+                                    <th class="px-6 py-3">Reappeal Date</th>
+                                    <th class="px-6 py-3">Status</th>
+                                    <th class="px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reappealCasesTableBody">
+                                {% for case in reappeal_cases %}
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-6 py-4">{{ case._id }}</td>
+                                    <td class="px-6 py-4">{{ case.original_complaint_date }}</td>
+                                    <td class="px-6 py-4">{{ case.subject }}</td>
+                                    <td class="px-6 py-4">{{ case.complainant_name }}</td>
+                                    <td class="px-6 py-4">{{ case.reappeal_date }}</td>
+                                    <td class="px-6 py-4">
+                                        <span class="px-2 py-1 text-xs font-medium rounded-full 
+                                            {% if case.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                            {% elif case.status == 'in_progress' %}bg-blue-100 text-blue-800
+                                            {% elif case.status == 'resolved' %}bg-green-100 text-green-800
+                                            {% elif case.status == 'cancelled' %}bg-red-100 text-red-800
+                                            {% endif %}">
+                                            {{ case.status|replace('_', ' ')|title }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button onclick="viewReappealCase('{{ case._id }}')"
+                                            class="text-primary hover:text-primary/80 flex items-center">
+                                            <i class="ri-eye-line mr-1"></i>
+                                            View
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="mt-6 flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Showing <span class="font-medium">1</span> to <span class="font-medium">10</span> of <span
+                            class="font-medium">20</span> results
+                    </div>
+                    <div class="flex space-x-2">
+                        <button
+                            class="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center">
+                            <i class="ri-arrow-left-s-line mr-1"></i>
+                            Previous
+                        </button>
+                        <button
+                            class="px-3 py-1 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90">
+                            1
+                        </button>
+                        <button
+                            class="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                            2
+                        </button>
+                        <button
+                            class="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center">
+                            Next
+                            <i class="ri-arrow-right-s-line ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
-</div>
+
+    {% include 'commitee/scripts.html' %}
+
+    <script>
+        // Function to view reappeal case
+        function viewReappealCase(caseId) {
+            window.location.href = `/chairperson/view_complaint/${caseId}`;
+        }
+
+        // Add event listeners for filters
+        document.getElementById('applyFilters').addEventListener('click', function () {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+            // Get all rows
+            const rows = document.querySelectorAll('#reappealCasesTableBody tr');
+
+            rows.forEach(row => {
+                const id = row.cells[0].textContent.toLowerCase();
+                const date = row.cells[1].textContent;
+                const subject = row.cells[2].textContent.toLowerCase();
+                const complainant = row.cells[3].textContent.toLowerCase();
+
+                // Check if row matches filters
+                const matchesDate = (!startDate || date >= startDate) && (!endDate || date <= endDate);
+                const matchesSearch = !searchQuery ||
+                    id.includes(searchQuery) ||
+                    subject.includes(searchQuery) ||
+                    complainant.includes(searchQuery);
+
+                // Show/hide row based on filters
+                row.style.display = matchesDate && matchesSearch ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+
+</html>

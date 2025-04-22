@@ -1,0 +1,5 @@
+{% if complaint.status == 'cancelled' and not complaint.reappealed %}
+<a href="{{ url_for('reappeal_complaint', complaint_id=complaint._id) }}" class="btn btn-warning btn-sm">
+    <i class="fas fa-redo"></i> File Reappeal
+</a>
+{% endif %}

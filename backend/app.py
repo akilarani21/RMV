@@ -1670,16 +1670,21 @@ def update_complaint_status():
             }), 400
 
         try:
+            # Prepare update data
+            update_data = {
+                'status': new_status,
+                'remarks': remarks,
+                'updated_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+            }
+            
+            # Add resolution_date if status is resolved
+            if new_status == 'resolved':
+                update_data['resolution_date'] = datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+
             # Update complaint in database
             result = complaint_collection.update_one(
                 {'_id': ObjectId(complaint_id)},
-                {
-                    '$set': {
-                        'status': new_status,
-                        'remarks': remarks,
-                        'updated_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                }
+                {'$set': update_data}
             )
             print("Database update result:", result.modified_count)
 
@@ -1703,7 +1708,23 @@ def update_complaint_status():
                     Previous Status: {' '.join(word.capitalize() for word in original_status.split('_'))}
                     New Status: {' '.join(word.capitalize() for word in new_status.split('_'))}
                     Remarks: {remarks}
+                    """
 
+                    if new_status == 'resolved':
+                        email_body += f"Resolution Date: {update_data['resolution_date']}\n"
+                    elif new_status == 'cancelled':
+                        # Add reappeal button for cancelled complaints
+                        reappeal_url = f"{request.host_url.rstrip('/')}/reappeal/{complaint_id}"
+                        email_body += f"""
+                        
+                        If you believe this decision was incorrect, you can file a reappeal by clicking the button below:
+                        
+                        <a href="{reappeal_url}" style="display: inline-block; background-color: #007bff; color: white; text-decoration: none; padding: 10px 20px; border-radius: 5px; margin-top: 20px; font-weight: bold;">File Reappeal</a>
+                        
+                        Note: You must be logged in to file a reappeal.
+                        """
+
+                    email_body += """
                     You can view your complaint details by logging into your account.
 
                     Best regards,
@@ -1711,6 +1732,8 @@ def update_complaint_status():
                     """
 
                     msg.body = email_body
+                    # Set HTML content for the email
+                    msg.html = email_body.replace('\n', '<br>')
                     mail.send(msg)
                     print("Email sent successfully")
                     
@@ -1787,30 +1810,29 @@ def update_interview(interview_id):
         )
 
         if result.modified_count > 0:
-            # Send email notification
-            email_body = f"""
-            Dear {interview['complainant_name']},
+            # Send email notification using Flask-Mail
+            msg = Message(
+                subject=f"Interview Update - {interview.get('complaint_id', '')}",
+                recipients=[interview.get('email')],
+                body=f"""
+Dear {interview.get('complainant_name', 'Complainant')},
 
-            Your interview details have been updated:
+Your interview details have been updated:
 
-            Date: {data['date']}
-            Time: {data['time']}
-            Mode: {data['mode']}
-            Location: {data['location']}
-            Status: {data['status']}
-            Interview Number: {data['interview_number']}
+Date: {data.get('date', 'Not specified')}
+Time: {data.get('time', 'Not specified')}
+Mode: {data.get('mode', 'Not specified')}
+Location: {data.get('location', 'Not specified')}
+Status: {data.get('status', 'Not specified')}
+Interview Number: {data.get('interview_number', 'Not specified')}
 
-            Please make sure to attend the interview at the scheduled time.
+Please make sure to attend the interview at the scheduled time.
 
-            Best regards,
-            Committee Team
-            """
-
-            send_email(
-                to_email=interview['email'],
-                subject=f"Interview Update - {interview['complaint_id']}",
-                body=email_body
+Best regards,
+Committee Team
+"""
             )
+            mail.send(msg)
 
             return jsonify({'success': True, 'message': 'Interview updated successfully'})
         else:
@@ -1872,13 +1894,16 @@ def complaints_list():
             
             # Add interview details if available
             if interview:
-                formatted_complaint['interview_date'] = interview.get('date', '')
-                formatted_complaint['interview_time'] = interview.get('time', '')
-                formatted_complaint['interview_mode'] = interview.get('mode', '')
-                formatted_complaint['interview_location'] = interview.get('location', '')
-                formatted_complaint['interview_participants'] = interview.get('participants', '')
-                formatted_complaint['interview_status'] = interview.get('status', '')
-                formatted_complaint['interview_number'] = interview.get('interview_number', '')
+                formatted_complaint.update({
+                    'interview_id': str(interview['_id']),
+                    'interview_date': interview.get('date', ''),
+                    'interview_time': interview.get('time', ''),
+                    'interview_mode': interview.get('mode', ''),
+                    'interview_location': interview.get('location', ''),
+                    'interview_participants': interview.get('participants', ''),
+                    'interview_status': interview.get('status', ''),
+                    'interview_number': interview.get('interview_number', '')
+                })
             
             formatted_complaints.append(formatted_complaint)
         
@@ -2150,33 +2175,32 @@ def create_schedule_interview():
         result = interviews_collection.insert_one(interview_data)
 
         if result.inserted_id:
-            # Send email notification
+            # Send email notification using Flask-Mail
             try:
-                email_body = f"""
-                Dear {personal_info.get('full_name', '')},
-
-                An interview has been scheduled for your complaint.
-
-                Interview Details:
-                Date: {data['date']}
-                Time: {data['time']}
-                Mode: {data['mode']}
-                Location: {data['location']}
-                Participants: {data['participants']}
-                Status: {data['status']}
-                Interview Number: {data['interview_number']}
-
-                Please make sure to attend the interview at the scheduled time.
-
-                Best regards,
-                Committee Team
-                """
-
-                send_email(
-                    to_email=data['email'],
+                msg = Message(
                     subject=f"Interview Scheduled - {data['complaint_id']}",
-                    body=email_body
+                    recipients=[data['email']],
+                    body=f"""
+Dear {personal_info.get('full_name', 'Complainant')},
+
+An interview has been scheduled for your complaint.
+
+Interview Details:
+Date: {data['date']}
+Time: {data['time']}
+Mode: {data['mode']}
+Location: {data['location']}
+Participants: {data['participants']}
+Status: {data['status']}
+Interview Number: {data['interview_number']}
+
+Please make sure to attend the interview at the scheduled time.
+
+Best regards,
+Committee Team
+"""
                 )
+                mail.send(msg)
                 
                 return jsonify({
                     'success': True,
@@ -2194,6 +2218,111 @@ def create_schedule_interview():
     except Exception as e:
         print(f"Error scheduling interview: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/delete_interview/<interview_id>', methods=['DELETE'])
+@csrf.exempt
+def delete_interview(interview_id):
+    try:
+        # Find and delete the interview
+        result = interviews_collection.delete_one({'_id': ObjectId(interview_id)})
+        
+        if result.deleted_count > 0:
+            return jsonify({
+                'success': True,
+                'message': 'Interview deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Interview not found'
+            }), 404
+            
+    except Exception as e:
+        print(f"Error deleting interview: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route('/reappeal/<complaint_id>', methods=['GET', 'POST'])
+@csrf.exempt
+def reappeal_complaint(complaint_id):
+    try:
+        # Get the original complaint
+        complaint = complaint_collection.find_one({'_id': ObjectId(complaint_id)})
+        if not complaint:
+            flash('Complaint not found.', 'error')
+            return redirect(url_for('chairperson_dashboard'))
+
+        # Check if complaint is cancelled
+        if complaint.get('status') != 'cancelled':
+            flash('Only cancelled complaints can be reappealed.', 'error')
+            return redirect(url_for('chairperson_dashboard'))
+
+        # Check if already reappealed
+        if complaint.get('reappeal_status'):
+            flash('This complaint has already been reappealed.', 'error')
+            return redirect(url_for('chairperson_dashboard'))
+
+        if request.method == 'POST':
+            # Get reappeal details
+            reappeal_reason = request.form.get('reappeal_reason')
+            if not reappeal_reason:
+                flash('Please provide a reason for reappeal.', 'error')
+                return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
+
+            # Update complaint with reappeal details
+            update_data = {
+                'reappeal_status': 'pending',
+                'reappeal_reason': reappeal_reason,
+                'reappeal_date': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
+                'status': 'reappeal'  # Update the main status to reappeal
+            }
+
+            result = complaint_collection.update_one(
+                {'_id': ObjectId(complaint_id)},
+                {'$set': update_data}
+            )
+
+            if result.modified_count > 0:
+                # Send email notification to committee
+                try:
+                    msg = Message(
+                        'New Reappeal Request - Raise My Voice',
+                        sender=app.config['MAIL_USERNAME'],
+                        recipients=[app.config['MAIL_USERNAME']]  # Send to admin email
+                    )
+                    
+                    email_body = f"""
+                    A new reappeal request has been submitted.
+
+                    Complaint Details:
+                    ID: {complaint_id}
+                    Subject: {complaint.get('details', {}).get('incident', {}).get('description', 'N/A')}
+                    Original Status: Cancelled
+                    Reappeal Reason: {reappeal_reason}
+                    Reappeal Date: {update_data['reappeal_date']}
+                    Complainant: {complaint.get('details', {}).get('personal_info', {}).get('full_name', 'N/A')}
+                    """
+
+                    msg.body = email_body
+                    mail.send(msg)
+                except Exception as mail_error:
+                    print("Failed to send reappeal notification email:", str(mail_error))
+
+                flash('Reappeal request submitted successfully.', 'success')
+                return redirect(url_for('reappeal_cases'))
+            else:
+                flash('Failed to submit reappeal request.', 'error')
+                return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
+
+        # GET request - show reappeal form
+        return render_template('commitee/reappeal_form.html', complaint=complaint)
+
+    except Exception as e:
+        print("Error in reappeal_complaint:", str(e))
+        flash('An error occurred while processing your request.', 'error')
+        return redirect(url_for('reappeal_cases'))
 
 if __name__ == '__main__':
     # Initialize the app

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">File a Reappeal</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5>Complaint Details</h5>
+                        <p><strong>Subject:</strong> {{ complaint.subject }}</p>
+                        <p><strong>Status:</strong> {{ complaint.status }}</p>
+                        <p><strong>Date Filed:</strong> {{ complaint.date }}</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('reappeal_complaint', complaint_id=complaint._id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="form-group">
+                            <label for="reappeal_reason"><strong>Reason for Reappeal</strong></label>
+                            <textarea class="form-control" id="reappeal_reason" name="reappeal_reason" rows="5" required
+                                placeholder="Please explain why you believe this complaint should be reconsidered..."></textarea>
+                        </div>
+
+                        <div class="alert alert-warning mt-3">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Important:</strong> Please provide detailed reasons for your reappeal. The committee
+                            will review your request based on the information you provide.
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-paper-plane"></i> Submit Reappeal
+                            </button>
+                            <a href="{{ url_for('chairperson_dashboard') }}" class="btn btn-secondary btn-lg ml-2">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
