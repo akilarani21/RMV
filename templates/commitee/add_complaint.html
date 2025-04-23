@@ -1,0 +1,256 @@
+{% extends "commitee/base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">Add New Complaint</h2>
+
+        <form id="addComplaintForm" enctype="multipart/form-data" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Personal Information -->
+                <div class="col-span-2">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Personal Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                            <input type="text" name="fullName"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" name="email"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                            <input type="tel" name="phone"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                            <input type="date" name="dob"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                            <select name="gender"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                                <option value="">--Select--</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Profession</label>
+                            <input type="text" name="profession"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Information -->
+                <div class="col-span-2">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Address Information</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                            <textarea name="address" rows="2"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
+                            <input type="text" name="city"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
+                            <input type="text" name="state"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                            <input type="text" name="country"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Pincode</label>
+                            <input type="text" name="pincode"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Incident Details -->
+                <div class="col-span-2">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Incident Details</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Date of Incident</label>
+                            <input type="date" name="incidentDate"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Location of Incident</label>
+                            <input type="text" name="incidentLocation"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                        </div>
+                        <div class="form-group col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <textarea name="incidentDescription" rows="4"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Uploads -->
+                <div class="col-span-2">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-700">Supporting Documents</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Upload Evidence</label>
+                            <input type="file" name="evidence" accept="application/pdf,image/*"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                            <p class="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG</p>
+                        </div>
+                        <div class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">ID Proof</label>
+                            <input type="file" name="idProof" accept="application/pdf,image/*"
+                                class="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary focus:ring-primary"
+                                required>
+                            <p class="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button type="submit"
+                    class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-300">
+                    Submit Complaint
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- File Preview Modal -->
+<div id="filePreviewModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">File Preview</h3>
+            <button onclick="closePreviewModal()" class="text-gray-500 hover:text-gray-700">
+                <i class="ri-close-line text-xl"></i>
+            </button>
+        </div>
+        <div id="previewContent" class="w-full h-full"></div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('addComplaintForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        try {
+            const response = await fetch('/submit_complaint', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Show success message
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                toast.textContent = 'Complaint submitted successfully';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+
+                // Redirect to complaints list
+                setTimeout(() => {
+                    window.location.href = '/chairperson/complaints_list';
+                }, 1000);
+            } else {
+                // Show error message
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                toast.textContent = data.message || 'Failed to submit complaint';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg';
+            toast.textContent = 'An error occurred while submitting the complaint';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    });
+
+    // File preview functionality
+    function previewFile(file, type) {
+        const reader = new FileReader();
+        const previewContent = document.getElementById('previewContent');
+        const modal = document.getElementById('filePreviewModal');
+
+        reader.onload = function (e) {
+            if (type === 'image') {
+                previewContent.innerHTML = `<img src="${e.target.result}" class="max-w-full h-auto" alt="Preview">`;
+            } else if (type === 'pdf') {
+                previewContent.innerHTML = `<embed src="${e.target.result}" type="application/pdf" width="100%" height="600px">`;
+            }
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        if (file.type.startsWith('image/')) {
+            reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function closePreviewModal() {
+        const modal = document.getElementById('filePreviewModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('previewContent').innerHTML = '';
+    }
+
+    // Add event listeners for file inputs
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+                    previewFile(file, file.type.startsWith('image/') ? 'image' : 'pdf');
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

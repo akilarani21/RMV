@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Committee Portal - Raise My Voice</title>
+
+    <!-- Include Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <!-- Include custom styles -->
+    {% include 'commitee/styles.html' %}
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#007bff',
+                    },
+                    borderRadius: {
+                        'button': '0.5rem',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-gray-50">
+    <!-- Include header -->
+    {% include 'commitee/header.html' %}
+
+    <!-- Include sidebar -->
+    {% include 'commitee/sidebar.html' %}
+
+    <!-- Main content -->
+    <main class="ml-64 p-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Include scripts -->
+    {% include 'commitee/scripts.html' %}
+</body>
+
+</html>

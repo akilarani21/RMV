@@ -877,13 +877,9 @@ def register_complaint():
 @app.route('/submit_complaint', methods=['POST'])
 @csrf.exempt
 def submit_complaint():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Please login first'}), 401
-
     try:
         # Get form data
         data = request.form.to_dict()
-        print("Received form data:", data)  # Debug print
         
         # Handle file uploads
         evidence_file = request.files.get('evidence')
@@ -896,17 +892,14 @@ def submit_complaint():
         if evidence_file and allowed_file(evidence_file.filename):
             filename, file_path = save_file_with_unique_name(evidence_file)
             evidence_path = f'uploads/{filename}'
-            print("Saved evidence file:", evidence_path)  # Debug print
             
         if id_proof_file and allowed_file(id_proof_file.filename):
             filename, file_path = save_file_with_unique_name(id_proof_file)
             id_proof_path = f'uploads/{filename}'
-            print("Saved ID proof file:", id_proof_path)  # Debug print
 
         # Create complaint document
         complaint_data = {
-            'user_id': session['user_id'],
-            'type': 'myself',
+            'type': 'committee',
             'status': 'pending',
             'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
             'details': {
@@ -914,6 +907,9 @@ def submit_complaint():
                     'full_name': data.get('fullName'),
                     'email': data.get('email'),
                     'phone': data.get('phone'),
+                    'dob': data.get('dob'),
+                    'gender': data.get('gender'),
+                    'profession': data.get('profession'),
                     'address': data.get('address'),
                     'city': data.get('city'),
                     'state': data.get('state'),
@@ -930,17 +926,50 @@ def submit_complaint():
             }
         }
 
-        print("Complaint data to be inserted:", complaint_data)  # Debug print
-
         # Insert complaint into database
         result = complaint_collection.insert_one(complaint_data)
         
         if result.inserted_id:
-            return jsonify({
-                'success': True,
-                'message': 'Complaint submitted successfully',
-                'complaint_id': str(result.inserted_id)
-            })
+            # Send email notification
+            try:
+                msg = Message(
+                    'Complaint Registered - Raise My Voice',
+                    sender=app.config['MAIL_USERNAME'],
+                    recipients=[data.get('email')]
+                )
+                
+                email_body = f"""
+                Dear {data.get('fullName')},
+
+                Your complaint has been successfully registered with our committee.
+
+                Complaint Details:
+                Subject: {data.get('incidentDescription')[:100]}...
+                Date of Incident: {data.get('incidentDate')}
+                Location: {data.get('incidentLocation')}
+                Status: Pending
+
+                You can track the status of your complaint by logging into your account.
+
+                Best regards,
+                Committee Team
+                """
+
+                msg.body = email_body
+                # Set HTML content for the email
+                msg.html = email_body.replace('\n', '<br>')
+                mail.send(msg)
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Complaint submitted and email sent successfully'
+                })
+            except Exception as mail_error:
+                print("Email error:", str(mail_error))
+                return jsonify({
+                    'success': True,
+                    'message': 'Complaint submitted but failed to send email'
+                })
         else:
             return jsonify({'success': False, 'message': 'Failed to submit complaint'}), 500
 
@@ -2323,6 +2352,29 @@ def reappeal_complaint(complaint_id):
         print("Error in reappeal_complaint:", str(e))
         flash('An error occurred while processing your request.', 'error')
         return redirect(url_for('reappeal_cases'))
+
+@app.route('/delete_complaint/<complaint_id>', methods=['DELETE'])
+def delete_complaint(complaint_id):
+    try:
+        # Delete the complaint from the database
+        result = complaint_collection.delete_one({'_id': ObjectId(complaint_id)})
+        
+        if result.deleted_count > 0:
+            return jsonify({'success': True, 'message': 'Complaint deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+    except Exception as e:
+        print(f"Error deleting complaint: {str(e)}")
+        return jsonify({'success': False, 'message': 'An error occurred while deleting the complaint'}), 500
+
+@app.route('/chairperson/add_complaint', methods=['GET'])
+def add_complaint():
+    try:
+        return render_template('commitee/add_complaint.html')
+    except Exception as e:
+        print(f"Error in add_complaint: {str(e)}")
+        flash('Error loading add complaint form. Please try again.', 'error')
+        return redirect(url_for('chairperson_dashboard'))
 
 if __name__ == '__main__':
     # Initialize the app
