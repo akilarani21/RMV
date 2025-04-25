@@ -41,6 +41,7 @@ import humanize
 import pytz
 import time
 from pymongo import WriteConcern
+import traceback
 
 try:
     from bs4 import BeautifulSoup
@@ -369,14 +370,17 @@ def verify_and_signup():
             'email': email,
             'firstName': request.form.get('firstName'),
             'lastName': request.form.get('lastName'),
-            'dateOfBirth': request.form.get('dateOfBirth'),
+            'dob': request.form.get('dateOfBirth'),  # Changed from dateOfBirth to dob
             'gender': request.form.get('gender'),
+            'profession': request.form.get('profession'),  # Added profession field
             'phone': request.form.get('phone'),
             'address': request.form.get('address'),
             'city': request.form.get('city'),
             'state': request.form.get('state'),
             'pincode': request.form.get('pincode'),
             'organization': request.form.get('organization'),
+            'organization_category': request.form.get('organization_category'),
+            'organization_role': request.form.get('organization_role'),
             'password': password,  # Store password as plain text
             'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
         }
@@ -766,8 +770,8 @@ def track_my_complaints():
         
         # Get all complaints for this user's email
         complaints = list(complaint_collection.find({
-            'email': user['email']
-        }).sort('registered_at', -1))  # Sort by registration date, newest first
+            'details.personal_info.email': user['email']
+        }).sort('created_at', -1))  # Sort by creation date, newest first
         
         # Format the complaints for display
         formatted_complaints = []
@@ -801,7 +805,7 @@ def track_my_complaints():
                     print(f"Error formatting complaint: {str(e)}")
                     continue
 
-        return render_template('commitee/my_complaints.html',
+        return render_template('complaints.html',
                             complaints=formatted_complaints,
                             user=user,
                             user_name=session.get('name', 'User'))
@@ -809,7 +813,7 @@ def track_my_complaints():
     except Exception as e:
         print(f"Error in track_my_complaints: {str(e)}")
         flash('An error occurred while fetching your complaints')
-        return render_template('commitee/my_complaints.html',
+        return render_template('complaints.html',
                             complaints=[],
                             error="Failed to load complaints. Please try again.")
 
@@ -827,13 +831,72 @@ def view_complaint(complaint_id):
         
         # Verify that this complaint belongs to the logged-in user
         user = user_collection.find_one({'_id': ObjectId(session['user_id'])})
-        if user['email'] != complaint['email']:
+        if user['email'] != complaint.get('details', {}).get('personal_info', {}).get('email', ''):
             flash('Unauthorized access')
             return redirect(url_for('track_my_complaints'))
         
-        return render_template('trackcomplaint.html', complaint=complaint)
+        # Get all interviews related to this complaint
+        interviews = list(interviews_collection.find({
+            'complaint_id': str(complaint['_id'])
+        }).sort('date', -1))
+        
+        # Get case handler details if assigned
+        case_handler = None
+        if complaint.get('assigned_to'):
+            case_handler = user_collection.find_one({'_id': ObjectId(complaint['assigned_to'])})
+            if case_handler:
+                case_handler = {
+                    'name': f"{case_handler.get('firstName', '')} {case_handler.get('lastName', '')}",
+                    'email': case_handler.get('email', ''),
+                    'phone': case_handler.get('phone', '')
+                }
+        
+        # Get the evidence and ID proof paths
+        evidence_path = complaint.get('details', {}).get('incident', {}).get('evidence_path', '')
+        id_proof_path = complaint.get('details', {}).get('id_proof_path', '')
+        
+        # Format the complaint data with all required information
+        formatted_complaint = {
+            '_id': str(complaint['_id']),
+            'status': complaint.get('status', 'Registered'),
+            'created_at': complaint.get('created_at', ''),
+            'updated_at': complaint.get('updated_at', ''),
+            'remarks': complaint.get('remarks', ''),
+            'case_handler': case_handler,
+            'interviews': interviews,
+            'details': {
+                'personal_info': {
+                    'full_name': complaint.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                    'email': complaint.get('details', {}).get('personal_info', {}).get('email', ''),
+                    'phone': complaint.get('details', {}).get('personal_info', {}).get('phone', ''),
+                    'dob': complaint.get('details', {}).get('personal_info', {}).get('dob', ''),
+                    'gender': complaint.get('details', {}).get('personal_info', {}).get('gender', ''),
+                    'profession': complaint.get('details', {}).get('personal_info', {}).get('profession', ''),
+                    'address': complaint.get('details', {}).get('personal_info', {}).get('address', ''),
+                    'city': complaint.get('details', {}).get('personal_info', {}).get('city', ''),
+                    'state': complaint.get('details', {}).get('personal_info', {}).get('state', ''),
+                    'country': complaint.get('details', {}).get('personal_info', {}).get('country', ''),
+                    'pincode': complaint.get('details', {}).get('personal_info', {}).get('pincode', ''),
+                    'organization': complaint.get('details', {}).get('personal_info', {}).get('organization', ''),
+                    'organization_category': complaint.get('details', {}).get('personal_info', {}).get('organization_category', ''),
+                    'organization_role': complaint.get('details', {}).get('personal_info', {}).get('organization_role', '')
+                },
+                'incident': {
+                    'date': complaint.get('details', {}).get('incident', {}).get('date', ''),
+                    'location': complaint.get('details', {}).get('incident', {}).get('location', ''),
+                    'description': complaint.get('details', {}).get('incident', {}).get('description', ''),
+                    'evidence_path': evidence_path
+                },
+                'id_proof_path': id_proof_path
+            },
+            'resolution_date': complaint.get('resolution_date', ''),
+            'mom': complaint.get('mom', [])  # Minutes of meetings
+        }
+        
+        return render_template('trackcomplaint.html', complaint=formatted_complaint)
     
     except Exception as e:
+        print(f"Error in view_complaint: {str(e)}")
         flash('Error accessing complaint details')
         return redirect(url_for('track_my_complaints'))
 
@@ -849,13 +912,34 @@ def register_complaint():
             
             # Add complaint to database
             complaint_data = {
-                'user_id': session['user_id'],
-                'name': data.get('name'),
-                'email': data.get('email'),
-                'phone': data.get('phone'),
-                'address': data.get('address'),
+                'type': 'committee',
                 'status': 'pending',
-                'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+                'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
+                'details': {
+                    'personal_info': {
+                        'full_name': data.get('fullName'),
+                        'email': data.get('email'),
+                        'phone': data.get('phone'),
+                        'dob': data.get('dateOfBirth'),  # Changed from dob to dateOfBirth to match form field
+                        'gender': data.get('gender'),
+                        'profession': data.get('profession'),
+                        'address': data.get('address'),
+                        'city': data.get('city'),
+                        'state': data.get('state'),
+                        'country': data.get('country'),
+                        'pincode': data.get('pincode'),
+                        'organization': data.get('organization'),
+                        'organization_category': data.get('organization_category'),
+                        'organization_role': data.get('organization_role')
+                    },
+                    'incident': {
+                        'date': data.get('incidentDate'),
+                        'location': data.get('incidentLocation'),
+                        'description': data.get('incidentDescription'),
+                        'evidence_file': evidence_path
+                    },
+                    'id_proof_file': id_proof_path
+                }
             }
             
             result = complaint_collection.insert_one(complaint_data)
@@ -878,25 +962,47 @@ def register_complaint():
 @csrf.exempt
 def submit_complaint():
     try:
+        print("Starting complaint submission...")
+        
         # Get form data
         data = request.form.to_dict()
+        print("Form data received:", data)
         
         # Handle file uploads
-        evidence_file = request.files.get('evidence')
-        id_proof_file = request.files.get('idProof')
-        
-        # Save files if provided
         evidence_path = None
-        id_proof_path = None
+        id_proof_path = None 
         
-        if evidence_file and allowed_file(evidence_file.filename):
-            filename, file_path = save_file_with_unique_name(evidence_file)
-            evidence_path = f'uploads/{filename}'
-            
-        if id_proof_file and allowed_file(id_proof_file.filename):
-            filename, file_path = save_file_with_unique_name(id_proof_file)
-            id_proof_path = f'uploads/{filename}'
+        try: 
+            if 'evidence' in request.files:
+                evidence_file = request.files['evidence']
+                if evidence_file and allowed_file(evidence_file.filename):
+                    print("Processing evidence file:", evidence_file.filename)
+                    evidence_path = save_file_with_unique_name(evidence_file)[0]
+                    print("Evidence file saved as:", evidence_path)
+                    
+            if 'idProof' in request.files:
+                id_proof_file = request.files['idProof']
+                if id_proof_file and allowed_file(id_proof_file.filename):
+                    print("Processing ID proof file:", id_proof_file.filename)
+                    id_proof_path = save_file_with_unique_name(id_proof_file)[0]
+                    print("ID proof file saved as:", id_proof_path)
+        except Exception as file_error:
+            print(f"Error handling file uploads: {str(file_error)}")
+            return jsonify({
+                'success': False,
+                'message': f'Error handling file uploads: {str(file_error)}'
+            }), 500
 
+        # Get user email from session
+        user_email = session.get('email')
+        if not user_email:
+            print("No user email found in session")
+            return jsonify({
+                'success': False,
+                'message': 'User not logged in'
+            }), 401
+
+        print("Creating complaint document...")
         # Create complaint document
         complaint_data = {
             'type': 'committee',
@@ -905,16 +1011,19 @@ def submit_complaint():
             'details': {
                 'personal_info': {
                     'full_name': data.get('fullName'),
-                    'email': data.get('email'),
+                    'email': user_email,
                     'phone': data.get('phone'),
-                    'dob': data.get('dob'),
+                    'dob': data.get('dateOfBirth'),
                     'gender': data.get('gender'),
                     'profession': data.get('profession'),
                     'address': data.get('address'),
                     'city': data.get('city'),
                     'state': data.get('state'),
                     'country': data.get('country'),
-                    'pincode': data.get('pincode')
+                    'pincode': data.get('pincode'),
+                    'organization': data.get('organization'),
+                    'organization_category': data.get('organization_category'),
+                    'organization_role': data.get('organization_role')
                 },
                 'incident': {
                     'date': data.get('incidentDate'),
@@ -926,56 +1035,44 @@ def submit_complaint():
             }
         }
 
+        print("Inserting complaint into database...")
         # Insert complaint into database
         result = complaint_collection.insert_one(complaint_data)
         
-        if result.inserted_id:
-            # Send email notification
-            try:
-                msg = Message(
-                    'Complaint Registered - Raise My Voice',
-                    sender=app.config['MAIL_USERNAME'],
-                    recipients=[data.get('email')]
-                )
-                
-                email_body = f"""
-                Dear {data.get('fullName')},
+        if not result.inserted_id:
+            print("Failed to insert complaint into database")
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save complaint'
+            }), 500
 
-                Your complaint has been successfully registered with our committee.
-
-                Complaint Details:
-                Subject: {data.get('incidentDescription')[:100]}...
-                Date of Incident: {data.get('incidentDate')}
-                Location: {data.get('incidentLocation')}
-                Status: Pending
-
-                You can track the status of your complaint by logging into your account.
-
-                Best regards,
-                Committee Team
-                """
-
-                msg.body = email_body
-                # Set HTML content for the email
-                msg.html = email_body.replace('\n', '<br>')
-                mail.send(msg)
-                
-                return jsonify({
-                    'success': True,
-                    'message': 'Complaint submitted and email sent successfully'
-                })
-            except Exception as mail_error:
-                print("Email error:", str(mail_error))
-                return jsonify({
-                    'success': True,
-                    'message': 'Complaint submitted but failed to send email'
-                })
-        else:
-            return jsonify({'success': False, 'message': 'Failed to submit complaint'}), 500
-
+        print("Sending email notification...")
+        # Send email notification
+        try:
+            send_complaint_submission_email(
+                user_email,
+                str(result.inserted_id)
+            )
+        except Exception as email_error:
+            print(f"Error sending email notification: {str(email_error)}")
+            # Don't fail the request if email fails
+            
+        print("Complaint submitted successfully")
+        return jsonify({
+            'success': True,
+            'message': 'Complaint submitted successfully',
+            'complaint_id': str(result.inserted_id)
+        })
+        
     except Exception as e:
         print(f"Error submitting complaint: {str(e)}")
-        return jsonify({'success': False, 'message': str(e)}), 500
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'Error submitting complaint: {str(e)}'
+        }), 500
 
 @app.route('/get_user_details')
 def get_user_details():
@@ -1009,12 +1106,22 @@ def myself_form():
         if not user:
             return redirect(url_for('login'))
             
-        # Prepare user data for the template
+        # Prepare user data for the template with all fields
         user_data = {
-            'name': f"{user.get('firstName', '')} {user.get('lastName', '')}",
+            'fullName': f"{user.get('firstName', '')} {user.get('lastName', '')}",
             'email': user.get('email', ''),
             'phone': user.get('phone', ''),
-            'address': user.get('address', '')
+            'dateOfBirth': user.get('dob', ''),  # Changed from dob to dateOfBirth to match form field
+            'gender': user.get('gender', ''),
+            'profession': user.get('profession', ''),
+            'address': user.get('address', ''),
+            'city': user.get('city', ''),
+            'state': user.get('state', ''),
+            'country': user.get('country', ''),
+            'pincode': user.get('pincode', ''),
+            'organization': user.get('organization', ''),
+            'organization_category': user.get('organization_category', ''),
+            'organization_role': user.get('organization_role', '')
         }
         
         return render_template('complaint/MyselfForm.html', user_data=user_data)
@@ -1049,25 +1156,76 @@ def onbehalf_form():
 @app.route('/view_document/<path:filename>')
 def view_document(filename):
     try:
+        print(f"Attempting to view document: {filename}")
+        print(f"Current working directory: {os.getcwd()}")
+        print(f"Upload folder: {app.config['UPLOAD_FOLDER']}")
+        
         # Remove 'uploads/' prefix if it exists
         if filename.startswith('uploads/'):
             filename = filename[8:]  # Remove 'uploads/' prefix
-            
-        # Get the full path to the document
-        document_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         
-        # Check if file exists
-        if not os.path.exists(document_path):
-            flash('Document not found', 'error')
-            return redirect(request.referrer or url_for('chairperson_dashboard'))
-            
-        # Send the file
-        return send_file(document_path)
+        # Try different possible paths
+        possible_paths = [
+            os.path.join(app.config['UPLOAD_FOLDER'], filename),  # Standard path
+            os.path.join('static', 'uploads', filename),  # Alternative path
+            os.path.join(os.getcwd(), 'static', 'uploads', filename),  # Absolute path
+            filename  # Direct path
+        ]
+        
+        document_path = None
+        for path in possible_paths:
+            print(f"Trying path: {path}")
+            if os.path.exists(path):
+                document_path = path
+                print(f"Found file at: {path}")
+                break
+        
+        if not document_path:
+            print("File not found in any of the following locations:")
+            for path in possible_paths:
+                print(f"- {path}")
+            return jsonify({'error': 'Document not found'}), 404
+        
+        # Get file extension
+        file_ext = os.path.splitext(filename)[1].lower()
+        print(f"File extension: {file_ext}")
+        
+        # Handle different file types
+        if file_ext in ['.jpg', '.jpeg', '.png', '.gif']:
+            # For images, serve from static folder
+            static_path = os.path.join('uploads', filename)
+            print(f"Serving image from static path: {static_path}")
+            return send_from_directory('static', static_path)
+        elif file_ext == '.pdf':
+            # For PDFs, send as inline
+            print("Sending PDF file")
+            response = send_file(
+                document_path,
+                mimetype='application/pdf',
+                as_attachment=False,
+                cache_timeout=0  # Disable caching to ensure fresh content
+            )
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
+        else:
+            # For other file types, send as attachment
+            print("Sending file as attachment")
+            response = send_file(
+                document_path,
+                as_attachment=True,
+                cache_timeout=0  # Disable caching to ensure fresh content
+            )
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
         
     except Exception as e:
         print(f"Error viewing document: {str(e)}")
-        flash('Error viewing document', 'error')
-        return redirect(request.referrer or url_for('chairperson_dashboard'))
+        print(f"Full error: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/download_file/<path:filename>')
 def download_file(filename):
