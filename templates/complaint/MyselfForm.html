@@ -101,74 +101,124 @@
 <body>
   <h2>Sexual Harassment Complaint - Myself</h2>
   <form id="complaintForm" enctype="multipart/form-data">
-    <h3>Personal Details</h3>
-    <div class="form-group">
-      <label>Full Name</label>
-      <input type="text" name="fullName" value="{{ user_data.name }}" required />
-    </div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" name="email" value="{{ user_data.email }}" required />
-    </div>
-    <div class="form-group">
-      <label>Phone</label>
-      <input type="tel" name="phone" value="{{ user_data.phone }}" required />
-    </div>
-    <div class="form-group">
-      <label>Address</label>
-      <textarea name="address" rows="2" required>{{ user_data.address }}</textarea>
-    </div>
-    <div class="form-group">
-      <label>City</label>
-      <input type="text" name="city" required />
-    </div>
-    <div class="form-group">
-      <label>State</label>
-      <input type="text" name="state" required />
-    </div>
-    <div class="form-group">
-      <label>Country</label>
-      <input type="text" name="country" required />
-    </div>
-    <div class="form-group">
-      <label>Pincode</label>
-      <input type="text" name="pincode" required />
+    <div class="form-section">
+      <h3>Personal Details</h3>
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" name="fullName" value="{{ user_data.fullName }}" required />
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" value="{{ user_data.email }}" required />
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" value="{{ user_data.phone }}" required />
+      </div>
+      <div class="form-group">
+        <label for="dateOfBirth">Date of Birth</label>
+        <input type="date" id="dateOfBirth" name="dateOfBirth" value="{{ user_data.dateOfBirth }}" required />
+      </div>
+      <div class="form-group">
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender" required>
+          <option value="">Select Gender</option>
+          <option value="male" {% if user_data.gender == 'male' %}selected{% endif %}>Male</option>
+          <option value="female" {% if user_data.gender == 'female' %}selected{% endif %}>Female</option>
+          <option value="other" {% if user_data.gender == 'other' %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="profession">Profession</label>
+        <input type="text" id="profession" name="profession" value="{{ user_data.profession }}" required />
+      </div>
     </div>
 
-    <h3>Incident Details</h3>
-    <div class="form-group">
-      <label>Date of Incident</label>
-      <input type="date" name="incidentDate" required />
-    </div>
-    <div class="form-group">
-      <label>Location of Incident</label>
-      <input type="text" name="incidentLocation" required />
-    </div>
-    <div class="form-group">
-      <label>Description</label>
-      <textarea name="incidentDescription" rows="4" required></textarea>
-    </div>
-    <div class="form-group">
-      <label>Upload Evidence</label>
-      <div class="file-input-container">
-        <label class="file-input-label">Choose File</label>
-        <input type="file" name="evidence" accept="application/pdf,image/*" required
-          onchange="previewFile(this, 'evidencePreview')" />
-        <span class="file-name"></span>
+    <div class="form-section">
+      <h3>Address Details</h3>
+      <div class="form-group">
+        <label for="address">Address</label>
+        <textarea id="address" name="address" required>{{ user_data.address }}</textarea>
       </div>
-      <div id="evidencePreview" class="preview-container"></div>
+      <div class="form-group">
+        <label for="city">City</label>
+        <input type="text" id="city" name="city" value="{{ user_data.city }}" required />
+      </div>
+      <div class="form-group">
+        <label for="state">State</label>
+        <input type="text" id="state" name="state" value="{{ user_data.state }}" required />
+      </div>
+      <div class="form-group">
+        <label for="country">Country</label>
+        <input type="text" id="country" name="country" value="{{ user_data.country }}" required />
+      </div>
+      <div class="form-group">
+        <label for="pincode">Pincode</label>
+        <input type="text" id="pincode" name="pincode" value="{{ user_data.pincode }}" required />
+      </div>
     </div>
 
-    <h3>ID Proof</h3>
-    <div class="form-group">
-      <label>Aadhaar Card / Driving License/ Ration card</label>
-      <div class="file-input-container">
-        <label class="file-input-label">Choose File</label>
-        <input type="file" name="idProof" accept="application/pdf,image/*" required
-          onchange="previewFile(this, 'idProofPreview')" />
-        <span class="file-name"></span>
+    <div class="form-section">
+      <h3>Organization Details</h3>
+      <div class="form-group">
+        <label for="organization">Organization Name</label>
+        <input type="text" id="organization" name="organization" value="{{ user_data.organization }}" required />
       </div>
-      <div id="idProofPreview" class="preview-container"></div>
+      <div class="form-group">
+        <label for="organization_category">Organization Category</label>
+        <select id="organization_category" name="organization_category" required>
+          <option value="">Select Category</option>
+          <option value="government" {% if user_data.organization_category == 'government' %}selected{% endif %}>Government</option>
+          <option value="private" {% if user_data.organization_category == 'private' %}selected{% endif %}>Private</option>
+          <option value="ngo" {% if user_data.organization_category == 'ngo' %}selected{% endif %}>NGO</option>
+          <option value="educational" {% if user_data.organization_category == 'educational' %}selected{% endif %}>Educational Institution</option>
+          <option value="other" {% if user_data.organization_category == 'other' %}selected{% endif %}>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="organization_role">Organization Role</label>
+        <input type="text" id="organization_role" name="organization_role" value="{{ user_data.organization_role }}" required />
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>Incident Details</h3>
+      <div class="form-group">
+        <label for="incidentDate">Date of Incident</label>
+        <input type="date" id="incidentDate" name="incidentDate" required />
+      </div>
+      <div class="form-group">
+        <label for="incidentLocation">Location of Incident</label>
+        <input type="text" id="incidentLocation" name="incidentLocation" required />
+      </div>
+      <div class="form-group">
+        <label for="incidentDescription">Description</label>
+        <textarea id="incidentDescription" name="incidentDescription" rows="4" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="evidence">Upload Evidence</label>
+        <div class="file-input-container">
+          <label class="file-input-label">Choose File</label>
+          <input type="file" id="evidence" name="evidence" accept="application/pdf,image/*" required
+            onchange="previewFile(this, 'evidencePreview')" />
+          <span class="file-name"></span>
+        </div>
+        <div id="evidencePreview" class="preview-container"></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3>ID Proof</h3>
+      <div class="form-group">
+        <label for="idProof">Aadhaar Card / Driving License/ Ration card</label>
+        <div class="file-input-container">
+          <label class="file-input-label">Choose File</label>
+          <input type="file" id="idProof" name="idProof" accept="application/pdf,image/*" required
+            onchange="previewFile(this, 'idProofPreview')" />
+          <span class="file-name"></span>
+        </div>
+        <div id="idProofPreview" class="preview-container"></div>
+      </div>
     </div>
 
     <button type="submit" class="submit-btn">Submit Complaint</button>
