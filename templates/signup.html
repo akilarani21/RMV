@@ -427,8 +427,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="dob">Date of Birth <span>*</span></label>
-                        <input type="date" id="dob" name="dob" required max="{{ '2009-03-24' }}"
+                        <label for="dateOfBirth">Date of Birth <span>*</span></label>
+                        <input type="date" id="dateOfBirth" name="dateOfBirth" required max="{{ '2009-03-24' }}"
                             onchange="validateAge(this)" />
                         <div class="error-message" id="dobError"></div>
                     </div>
@@ -442,6 +442,12 @@
                             <option value="others">Others</option>
                         </select>
                         <div class="error-message" id="genderError"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profession">Profession <span>*</span></label>
+                        <input type="text" id="profession" name="profession" required />
+                        <div class="error-message" id="professionError"></div>
                     </div>
                 </div>
 
@@ -691,7 +697,7 @@
 
         // Set max date to 16 years ago from today
         function setMaxDate() {
-            const dobInput = document.getElementById('dob');
+            const dobInput = document.getElementById('dateOfBirth');
             const today = new Date();
             const maxDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate());
             const formattedDate = maxDate.toISOString().split('T')[0];
@@ -840,7 +846,7 @@
             const confirmPassword = document.getElementById('confirmPassword').value;
             const firstName = document.getElementById('firstName').value;
             const lastName = document.getElementById('lastName').value;
-            const dateOfBirth = document.getElementById('dob').value;
+            const dateOfBirth = document.getElementById('dateOfBirth').value;
             const gender = document.getElementById('gender').value;
             const city = document.getElementById('city').value;
             const state = document.getElementById('state').value;
