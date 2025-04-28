@@ -171,12 +171,9 @@
         const formData = new FormData(this);
 
         try {
-            const response = await fetch('/submit_complaint', {
+            const response = await fetch('/chairperson/submit_complaint', {
                 method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token() }}'
-                }
+                body: formData
             });
 
             const data = await response.json();

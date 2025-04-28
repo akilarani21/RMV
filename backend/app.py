@@ -1002,18 +1002,25 @@ def submit_complaint():
                 'message': 'User not logged in'
             }), 401
 
+        # Determine complaint type based on form fields
+        complaint_type = 'myself'  # Default type
+        if 'victimName' in data:  # This field only exists in onbehalf form
+            complaint_type = 'onbehalf'
+        elif 'yourName' in data:  # This field only exists in onbehalf form
+            complaint_type = 'onbehalf'
+
         print("Creating complaint document...")
         # Create complaint document
         complaint_data = {
-            'type': 'committee',
+            'type': complaint_type,
             'status': 'pending',
             'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
             'details': {
                 'personal_info': {
-                    'full_name': data.get('fullName'),
+                    'full_name': data.get('fullName') or data.get('victimName'),
                     'email': user_email,
                     'phone': data.get('phone'),
-                    'dob': data.get('dateOfBirth'),
+                    'dob': data.get('dateOfBirth') or data.get('dob'),
                     'gender': data.get('gender'),
                     'profession': data.get('profession'),
                     'address': data.get('address'),
@@ -1034,6 +1041,19 @@ def submit_complaint():
                 'id_proof_path': id_proof_path
             }
         }
+
+        # Add onbehalf specific fields if applicable
+        if complaint_type == 'onbehalf':
+            complaint_data['details']['onbehalf_info'] = {
+                'your_name': data.get('yourName'),
+                'your_email': data.get('yourEmail'),
+                'your_phone': data.get('yourPhone'),
+                'relationship': data.get('relationship'),
+                'father_name': data.get('fatherName'),
+                'mother_name': data.get('motherName'),
+                'guardian_name': data.get('guardianName'),
+                'age': data.get('age')
+            }
 
         print("Inserting complaint into database...")
         # Insert complaint into database
@@ -2533,6 +2553,145 @@ def add_complaint():
         print(f"Error in add_complaint: {str(e)}")
         flash('Error loading add complaint form. Please try again.', 'error')
         return redirect(url_for('chairperson_dashboard'))
+
+@app.route('/chairperson/submit_complaint', methods=['POST'])
+@csrf.exempt
+def chairperson_submit_complaint():
+    try:
+        print("Starting chairperson complaint submission...")
+        
+        # Get form data
+        data = request.form.to_dict()
+        print("Form data received:", data)
+        
+        # Handle file uploads
+        evidence_path = None
+        id_proof_path = None 
+        
+        try: 
+            if 'evidence' in request.files:
+                evidence_file = request.files['evidence']
+                if evidence_file and allowed_file(evidence_file.filename):
+                    print("Processing evidence file:", evidence_file.filename)
+                    evidence_path = save_file_with_unique_name(evidence_file)[0]
+                    print("Evidence file saved as:", evidence_path)
+                    
+            if 'idProof' in request.files:
+                id_proof_file = request.files['idProof']
+                if id_proof_file and allowed_file(id_proof_file.filename):
+                    print("Processing ID proof file:", id_proof_file.filename)
+                    id_proof_path = save_file_with_unique_name(id_proof_file)[0]
+                    print("ID proof file saved as:", id_proof_path)
+        except Exception as file_error:
+            print(f"Error handling file uploads: {str(file_error)}")
+            return jsonify({
+                'success': False,
+                'message': f'Error handling file uploads: {str(file_error)}'
+            }), 500
+
+        print("Creating complaint document...")
+        # Create complaint document with type "committee"
+        complaint_data = {
+            'type': 'committee',
+            'status': 'pending',
+            'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
+            'details': {
+                'personal_info': {
+                    'full_name': data.get('fullName'),
+                    'email': data.get('email'),
+                    'phone': data.get('phone'),
+                    'dob': data.get('dateOfBirth'),
+                    'gender': data.get('gender'),
+                    'profession': data.get('profession'),
+                    'address': data.get('address'),
+                    'city': data.get('city'),
+                    'state': data.get('state'),
+                    'country': data.get('country'),
+                    'pincode': data.get('pincode'),
+                    'organization': data.get('organization'),
+                    'organization_category': data.get('organization_category'),
+                    'organization_role': data.get('organization_role')
+                },
+                'incident': {
+                    'date': data.get('incidentDate'),
+                    'location': data.get('incidentLocation'),
+                    'description': data.get('incidentDescription'),
+                    'evidence_path': evidence_path
+                },
+                'id_proof_path': id_proof_path
+            }
+        }
+
+        print("Inserting complaint into database...")
+        # Insert complaint into database
+        result = complaint_collection.insert_one(complaint_data)
+        
+        if not result.inserted_id:
+            print("Failed to insert complaint into database")
+            return jsonify({
+                'success': False,
+                'message': 'Failed to save complaint'
+            }), 500
+
+        print("Complaint submitted successfully")
+        return jsonify({
+            'success': True,
+            'message': 'Complaint submitted successfully',
+            'complaint_id': str(result.inserted_id)
+        })
+        
+    except Exception as e:
+        print(f"Error submitting complaint: {str(e)}")
+        import traceback
+        print("Full traceback:")
+        print(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'Error submitting complaint: {str(e)}'
+        }), 500
+
+@app.route('/chairperson/committee_complaints')
+def committee_complaints():
+    try:
+        # Get all complaints with type "committee"
+        complaints = list(complaint_collection.find({
+            'type': 'committee'
+        }).sort('created_at', -1))
+        
+        # Format complaints for display
+        formatted_complaints = []
+        for complaint in complaints:
+            # Get interview details for this complaint
+            interview = interviews_collection.find_one({'complaint_id': str(complaint['_id'])})
+            
+            formatted_complaint = {
+                '_id': str(complaint['_id']),
+                'created_at': complaint.get('created_at', ''),
+                'subject': complaint.get('details', {}).get('incident', {}).get('description', ''),
+                'complainant_name': complaint.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                'complainant_email': complaint.get('details', {}).get('personal_info', {}).get('email', ''),
+                'status': complaint.get('status', 'pending')
+            }
+            
+            # Add interview details if available
+            if interview:
+                formatted_complaint.update({
+                    'interview_id': str(interview['_id']),
+                    'interview_date': interview.get('date', ''),
+                    'interview_time': interview.get('time', ''),
+                    'interview_mode': interview.get('mode', ''),
+                    'interview_location': interview.get('location', ''),
+                    'interview_participants': interview.get('participants', ''),
+                    'interview_status': interview.get('status', ''),
+                    'interview_number': interview.get('interview_number', '')
+                })
+            
+            formatted_complaints.append(formatted_complaint)
+        
+        return render_template('commitee/committee_complaints.html', all_complaints=formatted_complaints)
+    except Exception as e:
+        print(f"Error in committee_complaints: {str(e)}")
+        return render_template('commitee/committee_complaints.html', all_complaints=[])
 
 if __name__ == '__main__':
     # Initialize the app
