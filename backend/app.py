@@ -649,29 +649,17 @@ def contact():
 #####################################  profile page #######################################################################
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    # Check if user is logged in
-    if 'user_id' not in session:
-        print("DEBUG: No user_id in session")
-        print("DEBUG: Session contents:", dict(session))
-        flash('Please login first', 'error')
-        return redirect(url_for('login'))
-
     try:
-        print(f"DEBUG: User ID in session: {session['user_id']}")
-        print(f"DEBUG: Session contents: {dict(session)}")
-        # Make session permanent
-        session.permanent = True
-        
-        # Get user details from database
-        user = user_collection.find_one({'_id': ObjectId(session['user_id'])})
-        
-        if not user:
-            print("DEBUG: User not found in database")
-            session.clear()
-            flash('User not found', 'error')
+        # Check if user is logged in
+        if 'user_id' not in session:
+            flash('Please login to access your profile')
             return redirect(url_for('login'))
         
-        print(f"DEBUG: Found user: {user.get('email', 'No email')}")
+        # Get user data from database
+        user = user_collection.find_one({'_id': ObjectId(session['user_id'])})
+        if not user:
+            flash('User not found')
+            return redirect(url_for('login'))
         
         if request.method == 'POST':
             # Handle form submission
@@ -716,9 +704,9 @@ def profile():
 
             # Update user in database
             user_collection.update_one(
-                        {'_id': ObjectId(session['user_id'])},
-                        {'$set': update_data}
-                    )
+                {'_id': ObjectId(session['user_id'])},
+                {'$set': update_data}
+            )
             
             flash('Profile updated successfully', 'success')
             return redirect(url_for('profile'))
@@ -744,9 +732,34 @@ def profile():
             user['email'] = session.get('email', '')
             print(f"DEBUG: Setting email from session: {user['email']}")
 
+        # Get user's complaints
+        try:
+            complaints = list(complaint_collection.find({
+                'details.personal_info.email': user['email']
+            }).sort('created_at', -1))
+            
+            # Format complaints for display
+            formatted_complaints = []
+            for complaint in complaints:
+                try:
+                    formatted_complaint = {
+                        '_id': str(complaint['_id']),
+                        'status': complaint.get('status', 'Registered'),
+                        'created_at': complaint.get('created_at', ''),
+                        'subject': complaint.get('details', {}).get('incident', {}).get('description', 'N/A')[:100] + '...'
+                    }
+                    formatted_complaints.append(formatted_complaint)
+                except Exception as e:
+                    print(f"Error formatting complaint: {str(e)}")
+                    continue
+        except Exception as e:
+            print(f"Error fetching complaints: {str(e)}")
+            formatted_complaints = []
+
         return render_template('profile.html', 
                             user=user,
-                            profile_image=profile_image)
+                            profile_image=profile_image,
+                            complaints=formatted_complaints)
 
     except Exception as e:
         print(f"DEBUG: Error in profile route: {str(e)}")
@@ -2192,27 +2205,27 @@ def resolved_cases():
 @app.route('/chairperson/reappeal_cases')
 def reappeal_cases():
     try:
-        # Get all reappeal cases
-        reappeals = list(complaint_collection.find({
-            'status': 'reappeal'
-        }).sort('created_at', -1))
+        # Get all reappeal cases from the reappeal_cases collection
+        reappeal_cases = list(reappeal_cases_collection.find().sort('created_at', -1))
         
-        # Format reappeal cases for display
+        # Format the cases for display
         formatted_cases = []
-        for case in reappeals:
+        for case in reappeal_cases:
             formatted_case = {
                 '_id': str(case['_id']),
-                'original_complaint_date': case.get('created_at', ''),
-                'subject': case.get('details', {}).get('incident', {}).get('description', ''),
-                'complainant_name': case.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                'complaint_id': case.get('complaint_id', ''),
+                'original_complaint_date': case.get('original_complaint_date', ''),
+                'subject': case.get('subject', ''),
+                'complainant_name': case.get('complainant', ''),
                 'reappeal_date': case.get('reappeal_date', ''),
-                'status': case.get('status', '')
+                'status': case.get('status', 'pending')
             }
             formatted_cases.append(formatted_case)
         
         return render_template('commitee/reappeal_cases.html', reappeal_cases=formatted_cases)
     except Exception as e:
         print(f"Error in reappeal_cases: {str(e)}")
+        flash('Error loading reappeal cases', 'error')
         return render_template('commitee/reappeal_cases.html', reappeal_cases=[])
 
 @app.route('/chairperson/my_complaints')
@@ -2451,6 +2464,21 @@ def delete_interview(interview_id):
             'message': str(e)
         }), 500
 
+# Initialize MongoDB collections
+client = MongoClient("mongodb://localhost:27017/")
+db = client['raise_my_voice']
+user_collection = db['users']
+otp_collection = db['otp_codes']
+complaint_collection = db['complaints']
+interviews_collection = db['interviews']
+
+# Create reappeal_cases collection if it doesn't exist
+if 'reappeal_cases' not in db.list_collection_names():
+    db.create_collection('reappeal_cases')
+reappeal_cases_collection = db['reappeal_cases']
+reappeal_cases_collection.create_index([('complaint_id', 1)])
+reappeal_cases_collection.create_index([('status', 1)])
+
 @app.route('/reappeal/<complaint_id>', methods=['GET', 'POST'])
 @csrf.exempt
 def reappeal_complaint(complaint_id):
@@ -2458,78 +2486,70 @@ def reappeal_complaint(complaint_id):
         # Get the original complaint
         complaint = complaint_collection.find_one({'_id': ObjectId(complaint_id)})
         if not complaint:
-            flash('Complaint not found.', 'error')
-            return redirect(url_for('chairperson_dashboard'))
-
-        # Check if complaint is cancelled
-        if complaint.get('status') != 'cancelled':
-            flash('Only cancelled complaints can be reappealed.', 'error')
-            return redirect(url_for('chairperson_dashboard'))
-
-        # Check if already reappealed
-        if complaint.get('reappeal_status'):
-            flash('This complaint has already been reappealed.', 'error')
-            return redirect(url_for('chairperson_dashboard'))
+            flash('Complaint not found', 'error')
+            return redirect(url_for('track_my_complaints'))
 
         if request.method == 'POST':
-            # Get reappeal details
-            reappeal_reason = request.form.get('reappeal_reason')
-            if not reappeal_reason:
-                flash('Please provide a reason for reappeal.', 'error')
-                return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
+            try:
+                # Get form data
+                reappeal_date = request.form.get('reappeal_date')
+                reason = request.form.get('reason')
 
-            # Update complaint with reappeal details
-            update_data = {
-                'reappeal_status': 'pending',
-                'reappeal_reason': reappeal_reason,
-                'reappeal_date': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S"),
-                'status': 'reappeal'  # Update the main status to reappeal
-            }
+                # Validate required fields
+                if not reappeal_date or not reason:
+                    flash('Please fill in all required fields', 'error')
+                    return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
 
-            result = complaint_collection.update_one(
-                {'_id': ObjectId(complaint_id)},
-                {'$set': update_data}
-            )
+                # Prepare reappeal data
+                reappeal_data = {
+                    'complaint_id': str(complaint_id),
+                    'original_complaint_date': complaint.get('created_at', ''),
+                    'subject': complaint.get('details', {}).get('incident', {}).get('description', ''),
+                    'complainant': complaint.get('details', {}).get('personal_info', {}).get('full_name', ''),
+                    'reappeal_date': reappeal_date,
+                    'reason': reason,
+                    'status': 'pending',
+                    'created_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+                }
 
-            if result.modified_count > 0:
-                # Send email notification to committee
+                # Check if reappeal already exists
+                existing_reappeal = reappeal_cases_collection.find_one({'complaint_id': str(complaint_id)})
+                if existing_reappeal:
+                    flash('A reappeal for this complaint already exists', 'error')
+                    return redirect(url_for('track_my_complaints'))
+
+                # Insert into reappeal_cases collection
                 try:
-                    msg = Message(
-                        'New Reappeal Request - Raise My Voice',
-                        sender=app.config['MAIL_USERNAME'],
-                        recipients=[app.config['MAIL_USERNAME']]  # Send to admin email
-                    )
+                    result = reappeal_cases_collection.insert_one(reappeal_data)
                     
-                    email_body = f"""
-                    A new reappeal request has been submitted.
-
-                    Complaint Details:
-                    ID: {complaint_id}
-                    Subject: {complaint.get('details', {}).get('incident', {}).get('description', 'N/A')}
-                    Original Status: Cancelled
-                    Reappeal Reason: {reappeal_reason}
-                    Reappeal Date: {update_data['reappeal_date']}
-                    Complainant: {complaint.get('details', {}).get('personal_info', {}).get('full_name', 'N/A')}
-                    """
-
-                    msg.body = email_body
-                    mail.send(msg)
-                except Exception as mail_error:
-                    print("Failed to send reappeal notification email:", str(mail_error))
-
-                flash('Reappeal request submitted successfully.', 'success')
-                return redirect(url_for('reappeal_cases'))
-            else:
-                flash('Failed to submit reappeal request.', 'error')
+                    if result.inserted_id:
+                        # Update the original complaint
+                        complaint_collection.update_one(
+                            {'_id': ObjectId(complaint_id)},
+                            {'$set': {'reappeal_status': 'pending'}}
+                        )
+                        
+                        flash('Reappeal submitted successfully! Your case will be reviewed.', 'success')
+                        return redirect(url_for('track_my_complaints'))
+                    else:
+                        flash('Error submitting reappeal. Please try again.', 'error')
+                        return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
+                except Exception as insert_error:
+                    print(f"Error inserting reappeal data: {str(insert_error)}")
+                    flash('Error saving reappeal data. Please try again.', 'error')
+                    return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
+                    
+            except Exception as e:
+                print(f"Error in reappeal submission: {str(e)}")
+                flash('Error saving reappeal data. Please try again.', 'error')
                 return redirect(url_for('reappeal_complaint', complaint_id=complaint_id))
 
-        # GET request - show reappeal form
-        return render_template('commitee/reappeal_form.html', complaint=complaint)
+        return render_template('reappealcases.html', complaint=complaint)
 
     except Exception as e:
-        print("Error in reappeal_complaint:", str(e))
-        flash('An error occurred while processing your request.', 'error')
-        return redirect(url_for('reappeal_cases'))
+        print(f"Error in reappeal_complaint: {str(e)}")
+        flash('An error occurred while processing your reappeal. Please try again.', 'error')
+        return redirect(url_for('track_my_complaints'))
 
 @app.route('/delete_complaint/<complaint_id>', methods=['DELETE'])
 def delete_complaint(complaint_id):
@@ -2692,6 +2712,72 @@ def committee_complaints():
     except Exception as e:
         print(f"Error in committee_complaints: {str(e)}")
         return render_template('commitee/committee_complaints.html', all_complaints=[])
+
+@app.route('/chairperson/handle_reappeal/<case_id>', methods=['POST'])
+@csrf.exempt
+def handle_reappeal(case_id):
+    try:
+        data = request.get_json()
+        action = data.get('action')
+
+        if action not in ['accept', 'reject']:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid action'
+            }), 400
+
+        # Get the reappeal case
+        reappeal_case = reappeal_cases_collection.find_one({'_id': ObjectId(case_id)})
+        if not reappeal_case:
+            return jsonify({
+                'success': False,
+                'message': 'Reappeal case not found'
+            }), 404
+
+        if action == 'accept':
+            # Update reappeal case status
+            reappeal_cases_collection.update_one(
+                {'_id': ObjectId(case_id)},
+                {'$set': {'status': 'accepted'}}
+            )
+
+            # Update original complaint status
+            complaint_collection.update_one(
+                {'_id': ObjectId(reappeal_case['complaint_id'])},
+                {'$set': {
+                    'status': 'pending',
+                    'reappeal_status': 'accepted',
+                    'updated_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+                }}
+            )
+
+        else:  # reject
+            # Update reappeal case status
+            reappeal_cases_collection.update_one(
+                {'_id': ObjectId(case_id)},
+                {'$set': {'status': 'rejected'}}
+            )
+
+            # Update original complaint status
+            complaint_collection.update_one(
+                {'_id': ObjectId(reappeal_case['complaint_id'])},
+                {'$set': {
+                    'reappeal_status': 'rejected',
+                    'updated_at': datetime.now(pytz.timezone("Asia/Kolkata")).strftime("%Y-%m-%d %H:%M:%S")
+                }}
+            )
+
+        return jsonify({
+            'success': True,
+            'message': f'Reappeal {action}ed successfully'
+        })
+
+    except Exception as e:
+        print(f"Error handling reappeal: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': 'Error processing request'
+        }), 500
 
 if __name__ == '__main__':
     # Initialize the app

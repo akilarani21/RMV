@@ -97,19 +97,41 @@
                                     <td class="px-6 py-4">
                                         <span class="px-2 py-1 text-xs font-medium rounded-full 
                                             {% if case.status == 'pending' %}bg-yellow-100 text-yellow-800
-                                            {% elif case.status == 'in_progress' %}bg-blue-100 text-blue-800
-                                            {% elif case.status == 'resolved' %}bg-green-100 text-green-800
-                                            {% elif case.status == 'cancelled' %}bg-red-100 text-red-800
+                                            {% elif case.status == 'accepted' %}bg-green-100 text-green-800
+                                            {% elif case.status == 'rejected' %}bg-red-100 text-red-800
                                             {% endif %}">
-                                            {{ case.status|replace('_', ' ')|title }}
+                                            {{ case.status|title }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <button onclick="viewReappealCase('{{ case._id }}')"
-                                            class="text-primary hover:text-primary/80 flex items-center">
-                                            <i class="ri-eye-line mr-1"></i>
-                                            View
-                                        </button>
+                                        <div class="flex space-x-2">
+                                            {% if case.status == 'pending' %}
+                                            <button onclick="handleReappeal('{{ case._id }}', 'accept')"
+                                                id="accept-{{ case._id }}"
+                                                class="px-3 py-1 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-all duration-300 flex items-center">
+                                                <i class="ri-check-line mr-1"></i>
+                                                Accept
+                                            </button>
+                                            <button onclick="handleReappeal('{{ case._id }}', 'reject')"
+                                                id="reject-{{ case._id }}"
+                                                class="px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-300 flex items-center">
+                                                <i class="ri-close-line mr-1"></i>
+                                                Reject
+                                            </button>
+                                            {% elif case.status == 'accepted' %}
+                                            <span
+                                                class="px-3 py-1 text-sm font-medium text-green-600 bg-green-100 rounded-lg">
+                                                <i class="ri-check-line mr-1"></i>
+                                                Accepted
+                                            </span>
+                                            {% elif case.status == 'rejected' %}
+                                            <span
+                                                class="px-3 py-1 text-sm font-medium text-red-600 bg-red-100 rounded-lg">
+                                                <i class="ri-close-line mr-1"></i>
+                                                Rejected
+                                            </span>
+                                            {% endif %}
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -155,6 +177,76 @@
         // Function to view reappeal case
         function viewReappealCase(caseId) {
             window.location.href = `/chairperson/view_complaint/${caseId}`;
+        }
+
+        // Function to handle reappeal actions
+        function handleReappeal(caseId, action) {
+            if (!confirm(`Are you sure you want to ${action} this reappeal?`)) {
+                return;
+            }
+
+            // Disable both buttons
+            document.getElementById(`accept-${caseId}`).disabled = true;
+            document.getElementById(`reject-${caseId}`).disabled = true;
+
+            // Add disabled styling
+            document.getElementById(`accept-${caseId}`).classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById(`reject-${caseId}`).classList.add('opacity-50', 'cursor-not-allowed');
+
+            fetch(`/chairperson/handle_reappeal/${caseId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    action: action
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                        toast.textContent = `Reappeal ${action}ed successfully`;
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 3000);
+
+                        // Reload the page after a short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        // Re-enable buttons on error
+                        document.getElementById(`accept-${caseId}`).disabled = false;
+                        document.getElementById(`reject-${caseId}`).disabled = false;
+                        document.getElementById(`accept-${caseId}`).classList.remove('opacity-50', 'cursor-not-allowed');
+                        document.getElementById(`reject-${caseId}`).classList.remove('opacity-50', 'cursor-not-allowed');
+
+                        // Show error message
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                        toast.textContent = data.message || 'Error processing request';
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Re-enable buttons on error
+                    document.getElementById(`accept-${caseId}`).disabled = false;
+                    document.getElementById(`reject-${caseId}`).disabled = false;
+                    document.getElementById(`accept-${caseId}`).classList.remove('opacity-50', 'cursor-not-allowed');
+                    document.getElementById(`reject-${caseId}`).classList.remove('opacity-50', 'cursor-not-allowed');
+
+                    // Show error message
+                    const toast = document.createElement('div');
+                    toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg';
+                    toast.textContent = 'Error processing request';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 3000);
+                });
         }
 
         // Add event listeners for filters

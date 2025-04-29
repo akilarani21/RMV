@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" type="x-icon" href="{{ url_for('static', filename='img/icon.jpg') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <title>Reappeal Case - Raise-My-Voice</title>
+    <style>
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+        }
+
+        h2 {
+            color: #db5299;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+            position: relative;
+            padding-bottom: 15px;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 4px;
+            background: #db5299;
+            border-radius: 2px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #db5299;
+            box-shadow: 0 0 0 2px rgba(219, 82, 153, 0.1);
+        }
+
+        .form-group input[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        .btn-submit {
+            background: #db5299;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-submit:hover {
+            background: #c4407e;
+            transform: translateY(-2px);
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding: 12px 25px;
+            background: #6c757d;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Reappeal Case</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <form action="{{ url_for('reappeal_complaint', complaint_id=complaint._id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="complaint_id">Complaint ID</label>
+                <input type="text" id="complaint_id" name="complaint_id" value="{{ complaint._id }}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="original_date">Original Complaint Date</label>
+                <input type="text" id="original_date" name="original_date" value="{{ complaint.created_at }}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="subject">Subject</label>
+                <input type="text" id="subject" name="subject" value="{{ complaint.details.incident.description }}"
+                    readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="complainant">Complainant</label>
+                <input type="text" id="complainant" name="complainant"
+                    value="{{ complaint.details.personal_info.full_name }}" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="reappeal_date">Reappeal Date</label>
+                <input type="date" id="reappeal_date" name="reappeal_date" required>
+            </div>
+
+            <div class="form-group">
+                <label for="reason">Reason for Reappeal</label>
+                <textarea id="reason" name="reason" rows="5" required
+                    placeholder="Please provide your reason for reappeal..."></textarea>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-paper-plane"></i> Submit Reappeal
+            </button>
+        </form>
+
+        <a href="{{ url_for('track_my_complaints') }}" class="back-btn">
+            <i class="fas fa-arrow-left"></i> Back to My Complaints
+        </a>
+    </div>
+
+    <script>
+        // Set today's date as the default reappeal date
+        document.getElementById('reappeal_date').valueAsDate = new Date();
+    </script>
+</body>
+
+</html>

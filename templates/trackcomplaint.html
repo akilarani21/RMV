@@ -175,7 +175,7 @@
             margin-bottom: 15px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
-        
+
         .btn-primary {
             background: #db5299;
             color: white;
@@ -188,11 +188,11 @@
             align-items: center;
             gap: 8px;
         }
-        
+
         .btn-primary:hover {
             background: #c4407e;
         }
-        
+
         .mt-3 {
             margin-top: 1rem;
         }
@@ -253,10 +253,10 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.9);
+            background-color: rgba(0, 0, 0, 0.9);
             overflow: auto;
         }
-        
+
         .modal-content {
             margin: auto;
             display: block;
@@ -265,7 +265,7 @@
             margin-top: 50px;
             object-fit: contain;
         }
-        
+
         .close {
             position: absolute;
             top: 15px;
@@ -276,7 +276,7 @@
             cursor: pointer;
             z-index: 1001;
         }
-        
+
         .close:hover {
             color: #db5299;
         }
@@ -375,7 +375,8 @@
                         <div class="detail-value">
                             {{ complaint.details.personal_info.address }}<br>
                             {{ complaint.details.personal_info.city }}, {{ complaint.details.personal_info.state }}<br>
-                            {{ complaint.details.personal_info.country }} - {{ complaint.details.personal_info.pincode }}
+                            {{ complaint.details.personal_info.country }} - {{ complaint.details.personal_info.pincode
+                            }}
                         </div>
                     </div>
                     <div class="info-item">
@@ -407,6 +408,17 @@
                         </span>
                     </div>
                 </div>
+                {% if complaint.status in ['pending', 'resolved', 'cancelled'] %}
+                <div class="detail-row">
+                    <div class="detail-label">Actions</div>
+                    <div class="detail-value">
+                        <a href="{{ url_for('reappeal_complaint', complaint_id=complaint._id) }}" class="btn-primary"
+                            style="background-color: #f57c00;">
+                            <i class="fas fa-redo"></i> Submit Reappeal
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
                 {% if complaint.case_handler %}
                 <div class="detail-row">
                     <div class="detail-label">Assigned Case Handler</div>
@@ -414,12 +426,18 @@
                         <div class="case-handler-info">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <p><i class="fas fa-user-shield"></i> <strong>Name:</strong> {{ complaint.case_handler.name }}</p>
-                                    <p><i class="fas fa-briefcase"></i> <strong>Role:</strong> {{ complaint.case_handler.role }}</p>
+                                    <p><i class="fas fa-user-shield"></i> <strong>Name:</strong> {{
+                                        complaint.case_handler.name }}</p>
+                                    <p><i class="fas fa-briefcase"></i> <strong>Role:</strong> {{
+                                        complaint.case_handler.role }}</p>
                                 </div>
                                 <div class="col-md-6">
-                                    <p><i class="fas fa-envelope"></i> <strong>Email:</strong> <a href="mailto:{{ complaint.case_handler.email }}">{{ complaint.case_handler.email }}</a></p>
-                                    <p><i class="fas fa-phone"></i> <strong>Phone:</strong> <a href="tel:{{ complaint.case_handler.phone }}">{{ complaint.case_handler.phone }}</a></p>
+                                    <p><i class="fas fa-envelope"></i> <strong>Email:</strong> <a
+                                            href="mailto:{{ complaint.case_handler.email }}">{{
+                                            complaint.case_handler.email }}</a></p>
+                                    <p><i class="fas fa-phone"></i> <strong>Phone:</strong> <a
+                                            href="tel:{{ complaint.case_handler.phone }}">{{
+                                            complaint.case_handler.phone }}</a></p>
                                 </div>
                             </div>
                         </div>
@@ -461,7 +479,8 @@
                 <div class="detail-row">
                     <div class="detail-label">Upload Additional Documents</div>
                     <div class="detail-value">
-                        <form action="{{ url_for('upload_additional_docs', complaint_id=complaint._id) }}" method="POST" enctype="multipart/form-data">
+                        <form action="{{ url_for('upload_additional_docs', complaint_id=complaint._id) }}" method="POST"
+                            enctype="multipart/form-data">
                             <input type="file" name="additional_docs" multiple>
                             <button type="submit" class="btn-primary mt-3">
                                 <i class="fas fa-upload"></i> Upload
@@ -478,59 +497,56 @@
                     <i class="fas fa-calendar-alt"></i>Interviews
                 </div>
                 {% if complaint.interviews %}
+                <div class="space-y-4">
                     {% for interview in complaint.interviews %}
-                    <div class="interview-card">
-                        <div class="detail-row">
-                            <div class="detail-label">Date & Time</div>
-                            <div class="detail-value">{{ interview.date_time }}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Interviewer</div>
-                            <div class="detail-value">{{ interview.interviewer }}</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Status</div>
-                            <div class="detail-value">
-                                <span class="status-badge status-{{ interview.status.lower() }}">
-                                    {{ interview.status }}
-                                </span>
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="info-item">
+                                <div class="detail-label">Date</div>
+                                <div class="detail-value">{{ interview.date }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Time</div>
+                                <div class="detail-value">{{ interview.time }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Complaint ID</div>
+                                <div class="detail-value">{{ complaint._id }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Email</div>
+                                <div class="detail-value">{{ complaint.details.personal_info.email }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Interview Number</div>
+                                <div class="detail-value">Interview {{ loop.index }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Participants</div>
+                                <div class="detail-value">{{ interview.participants }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Location</div>
+                                <div class="detail-value">{{ interview.location }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Mode</div>
+                                <div class="detail-value">{{ interview.mode }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="detail-label">Status</div>
+                                <div class="detail-value">
+                                    <span class="status-badge status-{{ interview.status.lower() }}">
+                                        {{ interview.status }}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                        {% if interview.remarks %}
-                        <div class="detail-row">
-                            <div class="detail-label">Feedback</div>
-                            <div class="detail-value">{{ interview.remarks }}</div>
-                        </div>
-                        {% endif %}
-                        {% if interview.mom_path %}
-                        <div class="detail-row">
-                            <div class="detail-label">Minutes of Meeting</div>
-                            <div class="detail-value">
-                                <a href="{{ url_for('download_mom', mom_path=interview.mom_path) }}" class="btn-primary">
-                                    <i class="fas fa-download"></i> Download MOM
-                                </a>
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% if userRole in ['admin', 'chairperson'] and not interview.mom_path %}
-                        <div class="detail-row">
-                            <div class="detail-label">Generate MOM</div>
-                            <div class="detail-value">
-                                <form id="momForm-{{ loop.index0 }}" class="mom-form">
-                                    <textarea name="mom_content" rows="4" placeholder="Enter Minutes of Meeting content..." class="mom-textarea"></textarea>
-                                    <button type="button" onclick="generateMOM('{{ complaint._id }}', '{{ loop.index0 }}')" class="btn-primary mt-3">
-                                        <i class="fas fa-file-pdf"></i> Generate MOM
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
                     {% endfor %}
-                {% else %}
-                <div class="detail-row">
-                    <div class="detail-value">No interviews scheduled yet.</div>
                 </div>
+                {% else %}
+                <div class="text-gray-500">No interviews scheduled yet.</div>
                 {% endif %}
             </div>
 
@@ -556,18 +572,10 @@
                 <div class="detail-row">
                     <div class="detail-label">Evidence</div>
                     <div class="detail-value">
-                        <a href="#" onclick="viewDocument('{{ url_for('view_document', filename=complaint.details.incident.evidence_path) | urlencode | safe }}')" class="btn-primary">
+                        <a href="#"
+                            onclick="viewDocument('{{ url_for('view_document', filename=complaint.details.incident.evidence_path) | urlencode | safe }}'); return false;"
+                            class="btn-primary">
                             <i class="fas fa-eye"></i> View Evidence
-                        </a>
-                    </div>
-                </div>
-                {% endif %}
-                {% if complaint.details.id_proof_path %}
-                <div class="detail-row">
-                    <div class="detail-label">ID Proof</div>
-                    <div class="detail-value">
-                        <a href="#" onclick="viewDocument('{{ url_for('view_document', filename=complaint.details.id_proof_path) | urlencode | safe }}')" class="btn-primary">
-                            <i class="fas fa-eye"></i> View ID Proof
                         </a>
                     </div>
                 </div>
@@ -583,9 +591,17 @@
                 </div>
                 <div class="detail-row">
                     <div class="detail-value">
-                        <a href="#" onclick="viewDocument('{{ url_for('view_document', filename=complaint.details.id_proof_path) | urlencode | safe }}')" class="btn-primary">
+                        <a href="#"
+                            onclick="viewDocument('{{ url_for('view_document', filename=complaint.details.id_proof_path) | urlencode | safe }}'); return false;"
+                            class="btn-primary">
                             <i class="fas fa-eye"></i> View ID Proof
                         </a>
+                        {% if complaint.status in ['pending', 'resolved'] %}
+                        <a href="{{ url_for('reappeal_complaint', complaint_id=complaint._id) }}" class="btn-primary"
+                            style="margin-left: 10px; background-color: #f57c00;">
+                            <i class="fas fa-redo"></i> Reappeal
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -600,7 +616,9 @@
                 <div class="detail-row">
                     <div class="detail-value">
                         {% for doc in complaint.additional_docs %}
-                        <a href="#" onclick="viewDocument('{{ url_for('view_document', filename=doc) | urlencode | safe }}')" class="btn-primary">
+                        <a href="#"
+                            onclick="viewDocument('{{ url_for('view_document', filename=doc) | urlencode | safe }}'); return false;"
+                            class="btn-primary">
                             <i class="fas fa-eye"></i> View Document {{ loop.index }}
                         </a>
                         {% endfor %}
@@ -618,7 +636,7 @@
     <script>
         // Add admin/chairperson specific functionality
         const userRole = "{{ session.get('role', '') }}";
-        
+
         if (userRole === 'admin' || userRole === 'chairperson') {
             // Add Schedule Interview button
             const interviewSection = document.querySelector('.section-title:has(i.fa-calendar-alt)').parentElement;
@@ -641,7 +659,7 @@
         function scheduleInterview(complaintId) {
             const dateTime = prompt('Enter interview date and time (YYYY-MM-DD HH:MM):');
             if (!dateTime) return;
-            
+
             const interviewer = prompt('Enter interviewer name:');
             if (!interviewer) return;
 
@@ -655,23 +673,23 @@
                     interviewer: interviewer
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload(); 
-                } else {
-                    alert('Error scheduling interview: ' + data.message);
-                }
-            })    
-            .catch(error => {
-                alert('Error scheduling interview: ' + error);
-            });
-        } 
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error scheduling interview: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error scheduling interview: ' + error);
+                });
+        }
 
         function updateInterview(complaintId, interviewIndex) {
             const status = prompt('Enter interview status:');
             if (!status) return;
-            
+
             const remarks = prompt('Enter remarks:');
             if (!remarks) return;
 
@@ -685,23 +703,23 @@
                     remarks: remarks
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Error updating interview: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error updating interview: ' + error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error updating interview: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error updating interview: ' + error);
+                });
         }
 
         function generateMOM(complaintId, interviewIndex) {
             const form = document.getElementById('momForm-' + interviewIndex);
             const momContent = form.querySelector('textarea[name="mom_content"]').value;
-            
+
             if (!momContent.trim()) {
                 alert('Please enter MOM content');
                 return;
@@ -722,18 +740,18 @@
                     mom_content: momContent
                 })
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('MOM generated successfully');
-                    location.reload();
-                } else {
-                    alert('Error generating MOM: ' + data.message);
-                }
-            })
-            .catch(error => {
-                alert('Error generating MOM: ' + error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('MOM generated successfully');
+                        location.reload();
+                    } else {
+                        alert('Error generating MOM: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('Error generating MOM: ' + error);
+                });
         }
 
         // Get the modal elements
@@ -741,25 +759,25 @@
         const modalImage = document.getElementById("documentImage");
         const modalFrame = document.getElementById("documentFrame");
         const closeBtn = document.getElementsByClassName("close")[0];
-        
+
         // Function to view document
         function viewDocument(url) {
             console.log("Viewing document:", url);
             modal.style.display = "block";
-            
+
             // Check if the URL is for an image
             if (url.match(/\.(jpg|jpeg|png|gif)$/i)) {
                 console.log("Loading image:", url);
                 modalImage.style.display = "block";
                 modalFrame.style.display = "none";
                 modalImage.src = url;
-                modalImage.onerror = function(error) {
+                modalImage.onerror = function (error) {
                     console.error("Error loading image:", url, error);
                     // Try loading the image directly from the static folder
                     const staticUrl = url.replace('/view_document/', '/static/uploads/');
                     console.log("Trying static URL:", staticUrl);
                     modalImage.src = staticUrl;
-                    modalImage.onerror = function(error) {
+                    modalImage.onerror = function (error) {
                         console.error("Error loading image from static URL:", staticUrl, error);
                         modal.style.display = "none";
                     };
@@ -769,22 +787,22 @@
                 modalImage.style.display = "none";
                 modalFrame.style.display = "block";
                 modalFrame.src = url;
-                modalFrame.onerror = function(error) {
+                modalFrame.onerror = function (error) {
                     console.error("Error loading document:", url, error);
                     modal.style.display = "none";
                 };
             }
         }
-        
+
         // Close the modal when clicking the close button
-        closeBtn.onclick = function() {
+        closeBtn.onclick = function () {
             modal.style.display = "none";
             modalImage.src = "";
             modalFrame.src = "";
         }
-        
+
         // Close the modal when clicking outside the content
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             if (event.target == modal) {
                 modal.style.display = "none";
                 modalImage.src = "";
@@ -793,7 +811,7 @@
         }
 
         // Add keyboard support for closing the modal
-        document.addEventListener('keydown', function(event) {
+        document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 modal.style.display = "none";
                 modalImage.src = "";

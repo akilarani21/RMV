@@ -189,6 +189,19 @@
                         </div>
                     </form>
                 </div>
+
+                <!-- Reappeal Button -->
+                {% if complaint.status == 'resolved' %}
+                <div class="mt-6 bg-gray-50 p-6 rounded-lg">
+                    <div class="flex justify-end">
+                        <button type="button" id="reappealButton"
+                            class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200 flex items-center gap-2">
+                            <i class="ri-refresh-line"></i>
+                            Request Reappeal
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -270,6 +283,39 @@
                 alert('An error occurred while updating the status. Please try again.');
             }
         });
+
+        // Function to view document
+        function viewDocument(url) {
+            const modal = document.getElementById("documentModal");
+            const modalImage = document.getElementById("documentImage");
+            const modalFrame = document.getElementById("documentFrame");
+
+            modal.style.display = "block";
+
+            // Check if the URL is for an image
+            if (url.match(/\.(jpg|jpeg|png|gif)$/i)) {
+                modalImage.style.display = "block";
+                modalFrame.style.display = "none";
+
+                // Try loading from the correct path
+                const correctPath = url.replace('/static/uploads/', '/uploads/');
+                modalImage.src = correctPath;
+
+                modalImage.onerror = function () {
+                    console.error("Error loading image:", correctPath);
+                    modal.style.display = "none";
+                };
+            } else {
+                modalImage.style.display = "none";
+                modalFrame.style.display = "block";
+                modalFrame.src = url;
+
+                modalFrame.onerror = function () {
+                    console.error("Error loading document:", url);
+                    modal.style.display = "none";
+                };
+            }
+        }
     </script>
 </body>
 
